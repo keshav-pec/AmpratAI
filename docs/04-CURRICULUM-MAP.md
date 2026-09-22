@@ -1,7 +1,6 @@
-# 04 — Curriculum Map: How a Topic Becomes Content
+# 04 — How a Topic Becomes Content
 
-`02-ROADMAP.md` says *what* to learn. This says *how each topic is instantiated* in the
-platform, so content production is mechanical rather than creative-on-demand.
+`02-ROADMAP.md` says *what* to learn. This says *how each topic is built* inside AmpratAI.
 Machine-readable version: `content/curriculum.yaml`.
 
 ---
@@ -9,134 +8,230 @@ Machine-readable version: `content/curriculum.yaml`.
 ## 1. Conventions
 
 ```
-ID scheme     m3.4          module            Month 3, module 4
-              m3.4.t2       topic             2nd topic in that module
-              m3.4.t2.c     concepts checkpoint
-              m3.4.t2.p     practice checkpoint
-              m3.4.t2.j     mini-project checkpoint (job)
-              mp-3.1        mini-project      Month 3, project 1
-              anim-xxx      animation
+s3.4            module            Stage 3, module 4
+s3.4.t2         topic             2nd topic in that module
+s3.4.t2.c/.p/.j checkpoints       concepts / practice / mini-project
+p-3.1           project           Stage 3, project 1
+anim-xxx        animation
 ```
-`priority`: `core` | `stretch` · `tier`: `S` | `A` | `B` | `C` (from `03-TIER-LIST.md`)
+`priority`: `core` | `optional` · `tier`: S | A | B | C (from `03-TIER-LIST.md`)
 
-## 2. The checkpoint template (every topic, no exceptions)
+---
+
+## 2. The plain-language standard
+
+**This is the most important section in this document.** Every word a learner reads inside
+AmpratAI follows these rules. The specification docs in this repo are dense because they're
+for whoever builds the platform. The content is not.
+
+### Rules
+1. **Short sentences.** If a sentence has three commas, split it.
+2. **Define every term the first time it appears**, in one line, in the same sentence or the
+   next. "Embedding — a list of numbers that captures what a piece of text means."
+3. **Example before definition.** Show the thing, then name it. Not the other way round.
+4. **One new idea per paragraph.** If a paragraph introduces two, split it.
+5. **Concrete over abstract.** "A 500-page PDF is about 250,000 tokens — that won't fit" beats
+   "documents frequently exceed context window constraints."
+6. **Use the analogy bridge.** You know React, Express, Mongo and MySQL. Almost every AI
+   concept has a mapping. Every topic includes one explicitly.
+7. **No unexplained acronyms, ever.** First use is always expanded.
+8. **Say why before how.** What problem does this solve? Then the mechanism.
+9. **Name the failure.** What goes wrong if you get this wrong? That's what makes it stick.
+10. **No filler.** No "in today's fast-paced world", no "it's important to note that".
+
+### The same idea, written badly and written well
+
+> ❌ **Bad (the way most courses write):**
+> Chunking strategies must be carefully considered as they materially impact retrieval
+> efficacy. Structure-aware approaches leverage document topology to preserve semantic
+> coherence, whereas naive fixed-size partitioning may fragment contextually significant
+> units, thereby degrading downstream recall metrics.
+
+> ✅ **Good (the way AmpratAI writes):**
+> Your document is 500 pages. The model can only read a few pages at a time. So you cut the
+> document into pieces — each piece is called a **chunk**.
+>
+> The obvious way is to cut every 500 characters. That works until it doesn't. Here's what
+> goes wrong: a sentence like *"The interest rate is 8.5% for loans under ₹10 lakh"* gets
+> cut in half. Now one chunk says "The interest rate is" and the next says "8.5% for loans
+> under ₹10 lakh". Neither one answers the question.
+>
+> A better way is to cut at places the document already has boundaries — headings, sections,
+> paragraphs. You already do this in React: you split by component, not by line count,
+> because components are where the meaning naturally ends.
+>
+> That's structure-aware chunking. Same idea, applied to documents.
+
+The second version is longer and takes less time to understand. That's the trade AmpratAI
+always makes.
+
+### Enforced, not hoped for
+Content goes through a check before it ships: average sentence length, undefined-term
+detection against the glossary, "does every topic have an analogy?" and a readability score.
+Anything that fails goes back. Amprat Assistant can rewrite a draft to this standard, and
+that's how most content gets written — drafted from a transcript, rewritten to the standard,
+then reviewed.
+
+---
+
+## 3. The checkpoint template
+
+Every topic has three checkpoints.
 
 ### ◆ CONCEPTS
 | Field | Required | Notes |
 |---|---|---|
-| `outcome` | ✓ | One sentence: "I can explain/choose/predict X" |
-| `primary` | ✓ | `youtube{id,start,end}` **or** `slides{deckId}` — never both |
-| `curated_notes` | ✓ | MDX. 400–900 words. The textbook version, left rail |
-| `analogy` | ✓ | The MERN/JS bridge. One paragraph. Non-negotiable — this is what makes the platform *yours* |
-| `animations` | ✓ (≥1) | See `06-ANIMATION-CATALOG.md` |
-| `primary_docs` | ✓ | 1–3 links. Marked read after the video. Rule 3 of the roadmap |
-| `glossary` | ✓ | Terms introduced, defined once, linked everywhere after |
-| `check` | ✓ | 5 auto-generated questions, 80% to pass |
-| `alternates` | — | Hidden behind "still confused?" |
+| `outcome` | ✓ | One plain sentence: "You'll be able to…" |
+| `sources[]` | ✓ | **One or more** curated YouTube segments **and/or** a slide deck. See §4. |
+| `notes` | ✓ | System-written, plain language, 400–900 words. Read alongside the video. |
+| `analogy` | ✓ | The MERN/MySQL bridge. Non-negotiable. |
+| `animations[]` | ✓ (≥1) | See `06-ANIMATION-CATALOG.md` |
+| `docs[]` | ✓ | 1–3 primary links, for after the video |
+| `glossary[]` | ✓ | Terms introduced, defined once, linked everywhere afterwards |
+| `check` | ✓ | 5 quick questions. Self-assessment — nothing is locked behind it. |
+| `printable` | ✓ | A one-page summary formatted for printing, because you write in a physical notebook |
 
 ### ◆ PRACTICE
-| Field | Required | Notes |
+Five modes. Most topics use two or three. The mix leans **concept-and-review** over
+**write-it-from-scratch**, per your working style — with a deliberate exception (mode 1).
+
+| Mode | What it is | Share |
 |---|---|---|
-| `drills[]` | ✓ (≥2) | `code-lab` \| `tool-drill` \| `prompt-arena` \| `debug` |
-| `runtime` | ✓ | `pyodide` \| `sandbox` \| `local+verify` |
-| `tests` | ✓ | visible (teach) + hidden (verify) |
-| `hints[]` | ✓ (3) | Revealing marks the drill "assisted" |
-| `break_it` | ✓ | The required sabotage task |
-| `cost_ceiling` | if LLM | ₹ cap per attempt |
+| **1. Core primitive** | Hand-write one small thing, no AI. Only ~10 across the whole path (cosine similarity, a chunker, RRF, an agent loop, a retry wrapper, a token budgeter, a streaming parser, a semaphore pool, a tool-schema generator, a rate limiter). 20–60 lines each. | ~5% |
+| **2. Read & predict** | Here's working code. What does it output? What breaks if the input is empty? Where's the bug? Reading code is the skill that matters when AI writes it. | ~25% |
+| **3. Spec-then-verify** | You write the spec or the prompt. AI writes the implementation. You review it against the spec, find what it got wrong, and fix it. This is the actual modern workflow, practised deliberately. | ~25% |
+| **4. Tool drill** | Use the real tool, with real verification. "Index 1,000 chunks in pgvector and query it" — AmpratAI checks the result shape. "Instrument this with Langfuse" — AmpratAI calls the Langfuse API and confirms the traces exist. | ~30% |
+| **5. Decision drill** | No code. "Here's a corpus and a latency budget — pick a chunking strategy and defend it." "This costs ₹4 a request; get it to ₹1." Scored against a rubric by Amprat Assistant. Closest thing to a real interview. | ~15% |
+
+Plus a **break-it** task per module: sabotage something, watch what happens, fix it.
 
 ### ◆ MINI-PROJECT
-Not every topic — **one per module minimum, one flagship per month.** Small topics roll up
-into the module project. Fields per `05-PLATFORM-SPEC.md` §6.1; briefs in
-`07-PROJECT-BRIEFS.md`.
+One per module minimum, one flagship per stage. Briefs in `07-PROJECT-BRIEFS.md`. Built in
+your own IDE, with AI assistance, then verified by acceptance tests and a short conversation
+with Amprat Assistant about your own code.
 
-### 🚪 MONTH GATE
-The checklist from `02-ROADMAP.md`, machine-checked where possible (URL ping, GitHub API,
-test results), self-attested where not (with a timestamp and a note).
-
----
-
-## 3. Worked example A — a concept-heavy topic
-
-**`m3.4.t3` — Structure-aware chunking** · tier S · core · est 55 min
-
-**◆ CONCEPTS** (`m3.4.t3.c`)
-- `outcome`: "I can pick a chunking strategy from the *shape* of a document, and predict what it will do to recall."
-- `primary`: **slides** — `deck:chunking-strategies` (14 slides). *Decision rationale: no single YouTube video covers structure-aware + parent-document + contextual retrieval at production depth; the good material is in Anthropic's contextual-retrieval post and practitioner blogs. See `08-RESOURCES.md` §3.*
-- `curated_notes`: `content/concepts/m3.4.t3.mdx` — the six strategies, when each wins, the metadata you must carry on every chunk.
-- `analogy`: "You already split React apps by component boundaries, not by line count, because boundaries carry meaning. A markdown `##` header is a component boundary. Splitting a doc every 512 characters is like splitting a codebase every 512 characters."
-- `animations`: `anim-chunk-strategies` (T2 explorable — drag a chunk-size slider across a real 40-page doc and watch chunk boundaries move and recall@5 change), `anim-parent-doc-retrieval` (T1 — retrieve small, return big)
-- `primary_docs`: LangChain text-splitter docs · Anthropic "Contextual Retrieval" · `pgvector` README
-- `glossary`: chunk, overlap, parent-document retrieval, sentence window, contextual retrieval, propositional chunking
-- `check`: 5 Qs incl. "A 900-page PDF of RBI circulars with numbered sections and tables — which strategy, and what metadata do you attach?"
-
-**◆ PRACTICE** (`m3.4.t3.p`)
-1. `code-lab` (pyodide): implement recursive character splitting with overlap; hidden tests assert no sentence is cut mid-word and overlap is exact.
-2. `code-lab` (sandbox): implement markdown-header-aware splitting that carries the header path as metadata.
-3. `tool-drill` (local+verify): chunk a real 200-page PDF at 4 sizes, embed into pgvector, run the 20-question eval set, submit the recall@5 table. *Verified by result shape + a metrics fingerprint.*
-4. `break_it`: set overlap to 0 and chunk size to 128; find a question that now fails; explain why in 3 sentences.
-
-**◆ MINI-PROJECT**: rolls up into `mp-3.1`.
-
-## 4. Worked example B — a tool-heavy topic
-
-**`m4.6.t4` — Building an MCP server** · tier A · core · est 3 h
-
-**◆ CONCEPTS** (`m4.6.t4.c`)
-- `outcome`: "I can build, test and publish an MCP server, and explain its security boundary."
-- `primary`: **slides** — `deck:mcp-build` (18 slides, code-forward). *YouTube coverage of MCP is mostly 2025-era and already stale; the spec + SDK docs are the truth.*
-- `analogy`: "An MCP server is an Express app whose routes are typed, self-describing, and discovered at runtime by a client that decides which to call. You've written the routes; the new part is that the *caller is a model*, so the route description is a prompt."
-- `animations`: `anim-mcp-handshake` (T1 — host↔client↔server, initialize → tools/list → tools/call, with the JSON-RPC frames visible), `anim-mcp-vs-bespoke` (T1 — N×M bespoke integrations collapsing into N+M via the protocol)
-- `primary_docs`: MCP spec (Architecture, Tools, Transports) · Python SDK README
-- `glossary`: host, client, server, tool, resource, prompt, sampling, roots, stdio, streamable HTTP, confused deputy
-
-**◆ PRACTICE** (`m4.6.t4.p`)
-1. `code-lab`: write a tool schema from a Python function signature + docstring; hidden tests check the JSON Schema is valid and the description is non-empty and unit-explicit.
-2. `tool-drill` (local+verify): run a reference MCP server over stdio, list tools, call one, paste the frames. *Verified by frame shape.*
-3. `tool-drill` (local+verify): **publish your own server**; Forge fetches the package and calls `tools/list` against it. *Verified by live protocol call — this is the highest-quality verification in the platform.*
-4. `break_it`: return a 60k-token blob from a tool; observe the agent's context overflow; implement truncation with a "truncated, call again with a filter" hint.
-
-**◆ MINI-PROJECT**: `mp-4.2` — Your MCP Server.
+### ◆ READY TO MOVE ON?
+A self-check list per stage. **Advisory, never a lock.** AmpratAI shows which items you've
+demonstrated (a passing test, a reachable URL, a committed file) and which you've simply not
+touched — then lets you go wherever you want.
 
 ---
 
-## 5. Topic inventory (production budget)
+## 4. Sources: multiple videos per topic
 
-| Month | Modules | Topics | Concept units | Animations | Drills (est.) | Projects |
-|---|---|---|---|---|---|---|
-| M1 Python & backend | 8 | 47 | 47 | 6 | ~94 | 2 |
-| M2 LLM APIs & prompting | 6 | 33 | 33 | 9 | ~66 | 2 |
-| M3 RAG & evals | 8 | 44 | 44 | 12 | ~88 | 2 |
-| M4 Tools, agents, MCP | 7 | 34 | 34 | 10 | ~68 | 2 |
-| M5 System design & LLMOps | 8 | 37 | 37 | 8 | ~60 | 3 |
-| M6 Capstone & portfolio | 5 | 17 | 17 | 2 | ~14 | 1 + capstone |
-| M7 Specialisation | 4 | 12 | 12 | 2 | ~10 | 1 |
-| **Total** | **46** | **224** | **224** | **49** | **~400** | **13 + capstone** |
+Earlier this plan said "one resource per concept". You asked for multiple videos per topic,
+and that's the better call — different explanations land differently, and a single broken
+link shouldn't take a topic down.
 
-Counts are generated from `content/curriculum.yaml`, which is the source of truth — if they
-disagree, the YAML wins and this table is stale.
-
-**Authoring rule: never more than 2 weeks ahead of yourself.** 224 topics authored up front
-is a six-month content job and a guaranteed roadmap failure. You author Month 3's content
-during Month 2's slack hours — and the tutor drafts from transcripts, you edit. Editing a
-draft is itself an excellent form of study; batch-authoring is not.
-
-## 6. Animation coverage policy
-
-Not every topic needs a bespoke animation. Coverage targets:
-- **Always animate**: anything with data flow (pipelines, request paths, agent loops), anything with a tradeoff dial (chunk size, temperature, top-k, recall/latency), anything spatial (embeddings, vector search, context window).
-- **Never animate**: syntax, CLI usage, config files, library APIs. A code block is better. Animating `uv add` would be a decorative animation, which rule 1 in `05-PLATFORM-SPEC.md` §7.3 forbids.
-- **Reuse**: one parameterised "pipeline" animation covers ~15 topics with different node sets. That's how 49 animations cover 224 topics.
-
-## 7. Content-source decision rule (summary — full version in `08-RESOURCES.md`)
+**How it works:** each topic has 1–3 curated YouTube segments plus an optional slide deck.
+The player has a source switcher, and **every alternative is labelled with what it's better
+at** — so it's a menu, not a pile.
 
 ```
-Is there ONE video that teaches this at production depth in < 30 min?
-├── YES → YouTube segment + curated notes
-└── NO  → Is the authoritative source a doc/blog/spec?
-          ├── YES → author SLIDES from primary sources (cite them)
-          └── NO  → author slides + build a T2 explorable, because if nobody has
-                    explained it well, an interactive model is the best teacher
+┌───────────────────────────────────────────────────────────────┐
+│  ▸ Main  (12 min · clearest overall)                          │
+│    Visual  (8 min · more diagrams, less talking)              │
+│    Deeper  (22 min · edge cases and internals)                │
+│    Hindi   (15 min · same content, Hindi explanation)         │
+│    Slides  (14 slides · written by AmpratAI, most current)    │
+└───────────────────────────────────────────────────────────────┘
 ```
-Expect roughly **55% YouTube / 45% slides**. Slides dominate Months 4–5 (MCP, evals,
-observability, AI system design, security) — the material is newer than good video
-coverage. That is exactly the gap this platform fills.
+
+Rules that stop this becoming a link dump:
+- Maximum of three videos plus one deck per topic
+- Every source is a **segment**, with start and end timestamps — a topic can be nine minutes of a fifty-minute video
+- Every source carries a one-line reason for existing. No reason, no slot.
+- Progress tracks the topic, not the video. Watching one source completes it; the others stay available.
+- Broken or removed videos are detected automatically, and the deck becomes the main source until it's replaced
+
+### Where slide decks are used instead
+Decks are fully under AmpratAI's control, which makes them the right choice wherever the
+best material is written rather than filmed, or where YouTube coverage is stale.
+
+Decks dominate Stages 4 and 5 — MCP, evals, observability, AI system design, security,
+cost engineering. That's the newest material and the worst-covered on video. **That gap is
+the main reason this platform is worth building**; if everything were well covered on
+YouTube, a playlist would do.
+
+Full decision rule in `08-RESOURCES.md` §2. Expected split: roughly 55% video-led, 45%
+deck-led.
+
+---
+
+## 5. Worked example — a concept-heavy topic
+
+**`s3.4.t3` — Structure-aware chunking** · tier S · core
+
+**◆ CONCEPTS**
+- **Outcome:** "You'll be able to look at a document and pick a chunking strategy from its
+  shape — and predict what that choice does to your results."
+- **Sources:** Main = a curated chunking-strategies segment · Visual = a shorter diagram-led
+  one · **Deck** = `chunking-strategies` (14 slides), the current main source, because no
+  single video covers structure-aware, parent-document and contextual retrieval together at
+  production depth.
+- **Analogy:** "You split React apps by component, not by line count, because components are
+  where meaning naturally ends. A markdown heading is the same kind of boundary. Cutting a
+  document every 512 characters is like cutting a codebase every 512 characters."
+- **Animations:** `anim-chunk-strategies` (drag a chunk-size slider across a real document
+  and watch the boundaries move and recall change) · `anim-parent-doc-retrieval`
+- **Docs:** LangChain text splitters · Anthropic's contextual retrieval write-up · pgvector README
+- **Glossary:** chunk · overlap · parent-document retrieval · sentence window · contextual retrieval
+- **Printable:** one page — the six strategies, when each wins, and the metadata to attach
+
+**◆ PRACTICE**
+1. *Read & predict* — here's a recursive splitter. What happens to a 300-character document with 500-character chunks and 100 overlap? Where does it cut this specific paragraph?
+2. *Spec-then-verify* — write the spec for a markdown-header-aware splitter that carries the heading path as metadata. AI implements it. Review it: does it handle a document with no headings? Nested headings? A heading at the very end?
+3. *Tool drill* — chunk a real 200-page PDF at four sizes, embed into pgvector, run the 20-question eval set, submit the recall@5 table. Verified by result shape.
+4. *Decision drill* — "900-page regulatory PDF, numbered sections, lots of tables, questions are usually about one specific clause. Pick a strategy and metadata set, and say what you're trading away."
+5. *Break it* — set overlap to 0 and chunk size to 128. Find a question that now fails. Explain why.
+
+**◆ MINI-PROJECT:** rolls into `p-3.1`.
+
+## 6. Worked example — a tool-heavy topic
+
+**`s4.6.t4` — Building an MCP server** · tier A · core
+
+**◆ CONCEPTS**
+- **Outcome:** "You'll be able to build, test and publish an MCP server, and explain exactly what it can and can't reach."
+- **Sources:** **Deck** = `mcp-build` (18 slides, code-forward) as main — MCP video coverage is mostly from 2025 and already out of date. One curated overview video as the Visual alternative.
+- **Analogy:** "An MCP server is an Express app whose routes describe themselves, and whose caller is a model instead of a browser. You've written the routes before. The new part is that the route description is a prompt — so it has to be written for a reader who will guess if you're vague."
+- **Animations:** `anim-mcp-handshake` (the actual JSON-RPC frames, readable) · `anim-mcp-vs-bespoke` (24 tangled integrations collapsing to 10)
+- **Docs:** the MCP spec — Architecture, Tools, Transports · the Python SDK README
+- **Glossary:** host · client · server · tool · resource · prompt · stdio · streamable HTTP · confused deputy
+
+**◆ PRACTICE**
+1. *Core primitive* — hand-write a tool-schema generator: a Python function signature plus docstring in, valid JSON Schema out. One of the ten. It takes 30 minutes and makes every framework's magic legible afterwards.
+2. *Read & predict* — here's a tool description without units. Here are ten user messages. Which calls go wrong, and how?
+3. *Tool drill* — run a reference MCP server over stdio, list its tools, call one, submit the frames.
+4. *Tool drill* — **publish your own server.** AmpratAI fetches your package and calls `tools/list` against it live. The strongest verification in the platform.
+5. *Break it* — return a 60,000-token blob from a tool. Watch the context overflow. Add truncation with a "refine your query" hint.
+
+**◆ MINI-PROJECT:** `p-4.2`.
+
+---
+
+## 7. Content inventory
+
+| Stage | Modules | Topics | Animations | Practice items (est.) | Projects |
+|---|---|---|---|---|---|
+| 1 Python & backend | 8 | 38 | 6 | ~90 | 2 |
+| 2 LLM APIs & prompting | 6 | 33 | 9 | ~85 | 2 |
+| 3 RAG & evals | 8 | 44 | 12 | ~110 | 2 |
+| 4 Tools, agents, MCP | 7 | 34 | 10 | ~85 | 2 |
+| 5 System design & ops | 8 | 37 | 8 | ~80 | 3 |
+| 6 Capstone & portfolio | 5 | 17 | 2 | ~20 | 1 + capstone |
+| 7 Interviews & depth | 4 | 12 | 2 | ~15 | 1 |
+| **Total** | **46** | **215** | **49** | **~485** | **13 + capstone** |
+
+Generated from `content/curriculum.yaml`, which is the source of truth. If they disagree,
+the YAML wins.
+
+**Authoring approach:** content is written a stage ahead of where you are, not all at once.
+215 topics written up front would be a six-month project and most of it would be stale
+before you reached it.
+
+## 8. Animation coverage policy
+
+- **Always animate**: anything with data flowing through it (pipelines, request paths, agent loops), anything with a tradeoff dial (chunk size, temperature, top-k), anything spatial (embeddings, vector search, context windows).
+- **Never animate**: syntax, CLI commands, config files, library APIs. A code block is better. An animated `uv add` would be decoration, and decoration is banned.
+- **Reuse**: one parameterised "pipeline" animation covers about fifteen topics with different node sets. That's how 49 animations cover 215 topics.

@@ -1,22 +1,19 @@
-# NexHireAI
+# AmpratAI
 
-Two things live in this repo:
+A personal learning platform and a custom roadmap for becoming a full-stack AI engineer.
 
-1. **A custom 7-month roadmap** to become a full-stack AI engineer, built for one specific
-   starting point — a MERN full-stack developer with shipped, deployed projects and no
-   Python or AI experience yet.
-2. **The spec for a personal learning platform** ("Forge") to run that roadmap: month-wise
-   courses, three checkpoints per topic (concepts / practice / mini-project), a
-   three-pane concept player with per-concept animations, API-verified tool drills, and
-   mini-projects built in a local IDE and graded on real acceptance tests.
+**Two parts:**
 
-Later, `NexHireAI` itself becomes the Month 6 capstone — an AI hiring product with
-semantic resume↔JD matching, explainable matches and multi-tenant isolation
-(`docs/07-PROJECT-BRIEFS.md`, MP-6.1).
+1. **The roadmap** — a sequenced path from "MERN full stack with some Python and basic RAG"
+   to "full-stack AI engineer who can compete for the best AI roles". Concept-first, built
+   around real systems, no calendar deadlines.
+2. **AmpratAI, the platform** — month-wise courses, three checkpoints per topic
+   (Concepts / Practice / Mini-project), a two-pane concept player with per-concept
+   animations, curated YouTube segments and custom slide decks, system-generated notes,
+   API-verified practice, and ambitious project briefs built with AI assistance.
 
-**Planning stage. No application code yet — on purpose.** See
-`docs/05-PLATFORM-SPEC.md` §9 for why the platform starts as a text file in Month 1 and
-why every platform feature has to double as a roadmap project.
+**The platform is built by Claude, not by you.** Your job is to learn. See
+`docs/05-PLATFORM-SPEC.md` §1.
 
 ## Start here
 
@@ -27,27 +24,42 @@ why every platform feature has to double as a roadmap project.
 ```
 docs/
   00-INDEX.md                     reading order
-  01-PROFILE-AND-GAP-ANALYSIS.md  honest diagnosis: strengths, gaps, traps
-  02-ROADMAP.md                   the 7-month plan with monthly gates
-  03-TIER-LIST.md                 skill priority S -> F
-  04-CURRICULUM-MAP.md            how a topic becomes content
-  05-PLATFORM-SPEC.md             the platform: UX, animations, architecture, phases
+  01-PROFILE-AND-GAP-ANALYSIS.md  where you stand, what's missing, what to skip
+  02-ROADMAP.md                   the path, month by month, no deadlines
+  03-TIER-LIST.md                 skill priority S -> F, with your current status
+  04-CURRICULUM-MAP.md            how a topic becomes content + plain-language rules
+  05-PLATFORM-SPEC.md             AmpratAI: UX, animations, architecture, build order
   06-ANIMATION-CATALOG.md         49 animation specs
-  07-PROJECT-BRIEFS.md            13 mini-project briefs
-  08-RESOURCES.md                 curated sources; video vs slides decision rule
-  09-JOB-STRATEGY.md              roles, positioning, 63 interview questions, applications
+  07-PROJECT-BRIEFS.md            13 project briefs, written for AI-assisted building
+  08-RESOURCES.md                 what to watch and read; how sources are chosen
+  09-JOB-STRATEGY.md              roles, positioning, 63 interview questions
 content/
   curriculum.yaml                 machine-readable curriculum (source of truth)
 ```
 
-## Design principles
+## Principles
 
-- **70% software engineering, 30% AI.** The roadmap front-loads the software engineering
-  because that's the part that transfers and the part that's missing.
-- **Nothing is complete without a deployed artifact.** Watching is not learning; the
-  platform enforces this rather than trusting it.
-- **Evals are a first-class skill, not an afterthought.** Build the ruler before optimising.
-- **Animations show mechanism, not decoration.** If it doesn't answer "what moves, and in
-  what order?", it doesn't ship.
-- **The platform is built *from* the curriculum it teaches** — the AI tutor is the RAG
-  project, the prompt arena is the evals project. Capped at 15% of weekly hours.
+- **Concepts first, code with AI.** You need to know exactly what a system does and why.
+  You do not need to type every line. A small set of primitives stays hand-written because
+  interviews probe them.
+- **No deadlines, no time boxes.** Exams happen. The order matters; the calendar doesn't.
+  Pause anywhere, resume anywhere.
+- **Nothing is complete without something that runs.** A deployed URL or a passing test,
+  not a watched video.
+- **Evals are a core skill, not an afterthought.** Build the ruler before optimising.
+- **Animations show mechanism, not decoration.** Every one answers "what moves, in what
+  order, and what changes it?"
+- **Plain language everywhere in the learner-facing content.** Short sentences, every term
+  defined the first time, examples before definitions.
+
+## Note on the repository name
+
+This repo is still named `NexHireAI` on GitHub. Renaming a repository needs to be done from
+the GitHub UI (Settings → General → Repository name → `AmpratAI`). After you rename it:
+
+```bash
+git remote set-url origin https://github.com/keshav-pec/AmpratAI
+```
+
+GitHub redirects the old URL, so nothing breaks in the meantime. All references inside the
+repo now say AmpratAI.

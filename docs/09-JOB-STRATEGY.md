@@ -24,8 +24,8 @@ the skills overlap ~70% but the interviews and the day job don't.
 | **Full-Stack AI Engineer** ← *you* | The AI backend **and** the interface | Everything above, plus streaming UI, dashboards, product sense | premium (rare profile) |
 
 **Your positioning decision:** lead with **Full-Stack AI Engineer**, and tune the emphasis
-per application. Against an agentic JD, lead with MP-4.1's approval gates and trace
-dashboard. Against an LLMOps JD, lead with MP-5.1's numbers and runbook. Same evidence,
+per application. Against an agentic role, lead with P4.1's approval gates and trace
+dashboard. Against an LLMOps role, lead with P5.1's numbers and runbook. Same evidence,
 different order.
 
 ## 2. Compensation, honestly
@@ -38,7 +38,7 @@ What actually moves your band, in order:
 1. **Evidence of shipping to production** — deployed, instrumented, load-tested, with a runbook
 2. **Evals** — because it proves you've operated something real, and almost nobody has it
 3. **Full-stack range** — you cover two headcount's worth of surface area
-4. **Domain fit** — an AI hiring product on your GitHub applying to an AI hiring company is not a coincidence you should leave to chance
+4. **Domain fit** — an AI hiring product on your GitHub, applied to an AI hiring company, is not a coincidence you should leave to chance
 5. **Communication** — forward-deployed roles pay the most in the list above and interview hardest on this
 6. Years of experience — matters least in this specific market, which is the opportunity
 
@@ -46,7 +46,7 @@ Realistic expectation-setting: a strong portfolio from this roadmap puts you in
 conversations for product-company AI roles rather than service-company generalist roles.
 Anyone promising a specific number for a specific person is guessing.
 
-## 3. Positioning assets (Month 6 deliverables)
+## 3. Positioning assets (Stage 6)
 
 ### GitHub
 - Profile README that reads as an engineer's, not a learner's: three flagship projects with one-line outcomes and live links, the MCP server install command, a link to your writing
@@ -58,7 +58,7 @@ Anyone promising a specific number for a specific person is guessing.
 - Headline: `Full-Stack AI Engineer · RAG, Agents, MCP · Python + React`
 - About: three paragraphs — what you build, the evidence (with numbers), what you're looking for. No "passionate about leveraging cutting-edge AI".
 - Featured: the three flagship demos
-- Post cadence: 1–2/week from Month 2 onward. **Start before you feel ready** — by Month 6 you want 30+ posts of history, because a profile that started posting last week reads as job-hunting, and one with a year of build logs reads as an engineer.
+- Posting is **optional**, and it's the highest-leverage optional thing on this list. If you do it, start early rather than at the end — a profile that began posting last week reads as job-hunting; one with months of build logs reads as an engineer. AmpratAI drafts a summary whenever you finish something; publishing it is a one-click decision, never a requirement.
 - What to post: the specific problem you hit this week and how you fixed it. "Reranking moved recall@5 from 0.61→0.89, cost +240ms and ₹0.20/query" outperforms every "excited to share my AI journey" post ever written.
 
 ### Personal site
@@ -66,11 +66,14 @@ You're a React developer — this should be embarrassingly good, and the AI demo
 **embedded and interactive**, not screenshots. A recruiter who can type a question into
 your RAG system on your own site is a recruiter who remembers you.
 
-### Writing (the most underrated asset here)
-8–12 technical posts, one per hard problem. Titles that are claims with numbers, not topics.
-Cross-post to your site + LinkedIn + dev.to. One good post gets you more inbound than 100
-applications, and writing them is how you find out which parts you only *thought* you
-understood.
+### Writing — optional, and the biggest multiplier if you do it
+A handful of technical posts, one per hard problem you actually solved. Titles that are
+claims with numbers, not topics: *"Reranking moved my recall@5 from 0.61 to 0.89 — here's
+what it cost in latency"* beats *"My RAG chatbot project"*.
+
+One good post generates more inbound than a hundred applications, and writing it is how you
+find out which parts you only *thought* you understood. But nothing in this path depends on
+it. If writing isn't for you, put the same energy into demo videos — they do a similar job.
 
 ## 4. The interview question bank
 
@@ -152,7 +155,7 @@ answer has no project behind it, that's a gap in your portfolio, not just your p
 60. A user asks your support bot something harmful. What happens, at which layer?
 
 ### About you
-61. Tell me about something you built that broke in production. (Your postmortem. This is why MP-5.2 exists.)
+61. Tell me about something you built that broke in production. (Your postmortem. This is why P5.2 exists.)
 62. What did you believe three months ago that you now think was wrong?
 63. Why not just use a bigger model / a framework / long context? (Tests whether you have judgement or habits.)
 
@@ -173,7 +176,7 @@ good on-ramp if Tier A doesn't bite in month one.
 
 **Tier C — global remote.** AI-native startups hiring remotely. Pays in a different
 currency, interviews in English, values a public portfolio and writing more than a degree.
-Your writing from Month 6 is the whole strategy here.
+Public work — writing or demo videos — is the whole strategy here.
 
 **Avoid:** "AI engineer" titles that are actually prompt-copy-paste roles with no
 engineering. Screen for it: *"What does the AI system you'd put me on look like in
@@ -186,13 +189,13 @@ Target mix: **60% referral/warm outreach · 30% direct application · 10% inboun
 
 Mass-applying to 200 postings for "14 LPA" is the first half of the video's opening
 contrast. Being the person a recruiter calls is the second half. The difference is that the
-second person has a public, verifiable body of work — which is precisely what Month 6
+second person has a public, verifiable body of work — which is precisely what Stage 6
 produces.
 
-### Weekly cadence (Months 6–7)
+### A rhythm that works (Stages 6–7) — a suggestion, not a quota
 - 5 targeted applications (each with a tailored 3-line note and the *right* project linked first)
 - 5 warm outreach messages to engineers (not recruiters) at target companies
-- 1 published post
+- 1 published post *(optional)*
 - 1 mock interview
 - Debrief every real round in writing within 2 hours, then fix the specific gap it exposed *before* the next round
 
@@ -209,7 +212,7 @@ question makes replying interesting rather than obligatory. Never attach a resum
 first message.
 
 ### Tracking
-A table (or a `NexHireAI` dogfood): company, role archetype, source, date, contact, stage,
+A simple table (or dogfood your own capstone): company, role archetype, source, date, contact, stage,
 next action, notes. Review every Monday. A pipeline with 5 companies isn't a pipeline.
 
 ## 7. Offers & negotiation
@@ -220,7 +223,7 @@ next action, notes. Review every Monday. A pipeline with 5 companies isn't a pip
 - Get everything in writing before you resign anything
 - A title with no real AI work is a trap even at a good number. Two years of prompt-tweaking in a role called "AI Engineer" is worse for your career than one year of genuine engineering in a role called "Backend Engineer".
 
-## 8. The one-paragraph pitch (write this in Month 6, refine it monthly)
+## 8. The one-paragraph pitch (write it in Stage 6, refine it as you go)
 
 > I'm a full-stack AI engineer. I came from MERN, so I build the AI backend in Python —
 > retrieval, agents, evals, the production plumbing — and the interface in React, which

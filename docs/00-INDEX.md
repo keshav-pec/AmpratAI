@@ -1,50 +1,54 @@
-# NexHireAI — Full-Stack AI Engineer Roadmap & Learning Platform Plan
+# AmpratAI — Roadmap & Platform Plan
 
-Planning documents only. No platform code yet — that's deliberate
-(`05-PLATFORM-SPEC.md` §9).
+Planning documents. The platform gets built from these (by Claude — see
+`05-PLATFORM-SPEC.md` §1).
+
+> **A note on how these docs read.** They're dense because they're specifications — written
+> for whoever builds the platform. The *learner-facing content* inside AmpratAI is held to
+> the opposite standard: short sentences, plain words, every term explained the first time,
+> examples before definitions. `04-CURRICULUM-MAP.md` §2 sets that standard and shows a
+> side-by-side example of the same idea written badly and written well.
 
 ## Read in this order
 
-| # | Doc | What it answers | Read when |
-|---|---|---|---|
-| 01 | [`01-PROFILE-AND-GAP-ANALYSIS.md`](01-PROFILE-AND-GAP-ANALYSIS.md) | Where you actually stand, what's missing, your 3 traps, and where I disagree with the video | **First. Today.** |
-| 02 | [`02-ROADMAP.md`](02-ROADMAP.md) | The 7-month plan: modules, weeks, ships, gates | First. Then weekly. |
-| 03 | [`03-TIER-LIST.md`](03-TIER-LIST.md) | Skill priority S→F, calibrated to you | Reference |
-| 04 | [`04-CURRICULUM-MAP.md`](04-CURRICULUM-MAP.md) | How one topic becomes content (checkpoint template + 2 worked examples) | When authoring content |
-| 05 | [`05-PLATFORM-SPEC.md`](05-PLATFORM-SPEC.md) | The learning platform: UX, animation system, architecture, build phases | Before writing any platform code |
-| 06 | [`06-ANIMATION-CATALOG.md`](06-ANIMATION-CATALOG.md) | 49 specified animations with mechanism + knobs + "the aha" | When building animations |
-| 07 | [`07-PROJECT-BRIEFS.md`](07-PROJECT-BRIEFS.md) | 13 mini-project briefs as real work tickets | At the start of each project |
-| 08 | [`08-RESOURCES.md`](08-RESOURCES.md) | What to watch, what to read, what to author, what to avoid | When authoring a topic |
-| 09 | [`09-JOB-STRATEGY.md`](09-JOB-STRATEGY.md) | 6 role archetypes, positioning, 63 interview questions, application pipeline | Month 6 — but skim §4 in Month 1 |
+| # | Doc | What it answers |
+|---|---|---|
+| 01 | [`01-PROFILE-AND-GAP-ANALYSIS.md`](01-PROFILE-AND-GAP-ANALYSIS.md) | Where you actually stand, what to skip, what's genuinely missing |
+| 02 | [`02-ROADMAP.md`](02-ROADMAP.md) | The path: 7 stages, what each one gives you, how to know you're ready to move on |
+| 03 | [`03-TIER-LIST.md`](03-TIER-LIST.md) | Which skills matter most, and your current status on each |
+| 04 | [`04-CURRICULUM-MAP.md`](04-CURRICULUM-MAP.md) | How each topic becomes content; the plain-language standard |
+| 05 | [`05-PLATFORM-SPEC.md`](05-PLATFORM-SPEC.md) | AmpratAI itself: screens, animations, colours, architecture, build order |
+| 06 | [`06-ANIMATION-CATALOG.md`](06-ANIMATION-CATALOG.md) | 49 animations: what each shows and why |
+| 07 | [`07-PROJECT-BRIEFS.md`](07-PROJECT-BRIEFS.md) | 13 project briefs, written for someone building with AI assistance |
+| 08 | [`08-RESOURCES.md`](08-RESOURCES.md) | Where the content comes from; how videos and decks are chosen |
+| 09 | [`09-JOB-STRATEGY.md`](09-JOB-STRATEGY.md) | Roles, positioning, 63 interview questions, applications |
 
-Machine-readable curriculum: [`../content/curriculum.yaml`](../content/curriculum.yaml) —
-source of truth for months, modules, topics, animations and gates.
+Machine-readable curriculum: [`../content/curriculum.yaml`](../content/curriculum.yaml).
 
-## The whole thing in ten lines
+## The whole path in eight lines
 
 ```
-M1  Python · FastAPI · Postgres · Docker · 8h of AI intuition   <- the 70% you're missing
-M2  LLM APIs · streaming · production prompting · structured output
-M3  RAG · hybrid retrieval · reranking · EVALS FIRST            <- most-hired skill
-M4  Tool use · agents from scratch · LangGraph · MCP server
-M5  AI system design · LLMOps · observability · CI eval gates · security
-M6  Capstone (multi-tenant) · portfolio · writing · applications
-M7  Interview loop · specialisation spike · negotiation
+STAGE 1  Python where it matters for AI · FastAPI · Postgres+pgvector · Docker
+STAGE 2  LLM APIs · streaming · production prompting · structured output
+STAGE 3  RAG for real: ingestion, hybrid retrieval, reranking, and EVALS
+STAGE 4  Tool use · agents · MCP (build and publish one)
+STAGE 5  AI system design · observability · CI eval gates · security · cost
+STAGE 6  Capstone (multi-tenant, explainable) · portfolio
+STAGE 7  Interviews · one specialisation · negotiation
 ```
 
-**Never:** model training · math-first · certificate farming · framework tourism.
-**Always:** build → break → fix → deploy → write about it.
+Stages are **content units, not calendar months.** Roughly 650 focused hours in total.
+At 25–30 h/week that's about 6 months; at 12 h/week, about 12. Exam weeks count as zero
+and cost you nothing but time.
 
-## Three things to do before you open anything else
-
-1. **Read `01` end to end.** Especially trap 3, which is the one most likely to cost you the whole year.
-2. **Do Phase 0 of the platform** (`05` §9): a checklist file and Obsidian, ≤ 6 hours, one weekend. No app.
-3. **Start Month 1 on Monday.** Not after the platform exists. Not after more research.
+**Never:** training models from scratch · math-first · certificate collecting ·
+learning five frameworks.
+**Always:** understand it → build it (with AI) → break it → fix it → deploy it.
 
 ## Status
 
 - [x] Roadmap planned
 - [x] Platform specified
 - [x] Curriculum seeded (`content/curriculum.yaml`)
-- [ ] Phase 0 checklist set up
-- [ ] Month 1 started
+- [ ] AmpratAI Phase 1 built (shell + Stage 1 content)
+- [ ] Stage 1 started

@@ -1,384 +1,402 @@
-# Forge curriculum — machine-readable seed
+# AmpratAI curriculum — machine-readable source of truth
 #
-# Consumed by the platform (05-PLATFORM-SPEC.md §10.3) and validated by a Zod/pydantic
-# schema at build time. Human-readable version: docs/02-ROADMAP.md
+# Consumed by the platform (05-PLATFORM-SPEC.md §11) and synced to MongoDB.
+# Human-readable version: docs/02-ROADMAP.md
 #
-# STATUS: months are complete at MODULE level. Topics are fully expanded for M1 and for
-# m3.4 as worked examples (see docs/04-CURRICULUM-MAP.md §3–4). Remaining topics are
-# authored two weeks ahead of where you actually are — never batch-authored.
-# See docs/04-CURRICULUM-MAP.md §5 for why.
+# STAGES ARE CONTENT UNITS, NOT CALENDAR MONTHS. No deadlines, no time boxes,
+# no quotas anywhere in this file by design. `readiness` lists are self-checks,
+# never locks.
+#
+# Topics are fully expanded for Stage 1 and for s3.4 as a worked example
+# (docs/04-CURRICULUM-MAP.md §5-6). Everything else carries module-level shape;
+# topic detail is authored one stage ahead of where the learner is.
 
-version: 1
-track:
+version: 2
+platform:
+  name: AmpratAI
+  assistant_name: Amprat Assistant
+  built_by: claude            # the learner does not build or maintain this
+  progress_storage: server    # MongoDB Atlas; same state on every device
+  blocking_gates: false       # readiness lists are advisory only
+  streaks: false
+  deadlines: false
+  time_boxes: false
+
+learner:
   slug: fullstack-ai-engineer
-  title: Full-Stack AI Engineer — custom track
-  persona: >
-    MERN full stack. Strong React + Node + Mongo, many deployed projects.
-    No Python, no SQL depth, no containers, no AI. Both "Rahul" and "Priya"
-    from the reference video at once.
-  lane: standard          # sprint(5mo) | standard(7mo) | sustainable(10mo)
-  hours_per_week: 30
-  daily_constant:
-    - id: dsa
-      title: 2 DSA problems in Python
-      minutes: 30
-      rationale: interview insurance + Python reps; not extra time
+  summary: >
+    MERN full stack. Strong React, Node, Mongo; many deployed projects.
+    Python low-medium. SQL via MySQL. 300+ DSA problems solved.
+    Basic RAG knowledge plus one simple RAG project already built.
+  transfers: [rest-apis, async-js, react, auth, sql, schema-design, deployment, shipping-habit]
+  real_gaps: [asyncio, pydantic, fastapi, docker, cloud, llm-apis, agents, mcp,
+              evals, observability, ai-system-design, cost-engineering, queues]
+  partial_gaps: [postgres-specifics, pgvector, rag-depth, context-engineering]
+  already_done: [dsa]         # no easy problems anywhere; sharpening only
+  effort_estimate_hours: [650, 800]
 
-months:
+content_rules:
+  language_standard: docs/04-CURRICULUM-MAP.md#2
+  sources_per_topic: { videos_max: 3, decks_max: 1, each_needs_reason: true }
+  progress_tracks: topic       # not source — any one source completes the topic
+  notes: system_written        # learner uses a physical notebook; no note UI
+  printable_summary: required  # one A4 page per topic
+  fullscreen: [video, slides, animation]
 
-  # ───────────────────────────────────────────────────────────────── MONTH 1
+practice_mix:                  # concepts first; code mostly with AI assistance
+  core_primitive: 0.05         # hand-written, no AI — ~10 across the whole path
+  read_and_predict: 0.25
+  spec_then_verify: 0.25       # you spec, AI implements, you review and fix
+  tool_drill: 0.30             # real tools, verified via live API calls
+  decision_drill: 0.15         # no code; pick an approach and defend it
+  break_it_per_module: true
+
+hand_written_primitives:       # the only things built without AI
+  - cosine similarity
+  - a recursive chunker with overlap
+  - reciprocal rank fusion
+  - an agent loop with budgets
+  - a retry wrapper with exponential backoff and jitter
+  - a token budgeter
+  - a streaming response parser
+  - a bounded-concurrency semaphore pool
+  - a tool-schema generator from a function signature
+  - a token-bucket rate limiter
+
+optional_practices:            # genuinely optional; nothing depends on them
+  dsa_sharpening: { level: [medium, hard], quota: none, easy_problems: never }
+  public_writing: { required: false, drafted_by: assistant }
+  break_it_drills: { recommended: true, required: false }
+
+stages:
+
+  # ─────────────────────────────────────────────────────────── STAGE 1
   - idx: 1
-    code: m1
-    title: Become a Python backend engineer
+    code: s1
+    title: Python where it matters, and the backend gaps
     outcome: >
-      I can build, test, containerise and deploy a typed, async Python API with a
-      Postgres database — and I understand why AI tooling chose this stack.
-    hours_est: 130
+      I can build, test, containerise and deploy a typed, async Python API with
+      Postgres and pgvector behind it.
+    note: Deliberately small. Skip anything you test out of — each module has a self-check.
     modules:
-      - code: m1.1
-        title: Python for the JavaScript engineer
+      - code: s1.1
+        title: Python for AI code
         priority: core
         tier: S
+        self_check: >
+          Skip this module if you can write a decorator that times a function,
+          explain what yield does, use a context manager, and read a type-hinted
+          signature with Optional and generics.
         topics:
-          - { idx: 1, title: "Syntax, names and truthiness (vs JS)", est_min: 50 }
-          - { idx: 2, title: "Comprehensions, unpacking, f-strings", est_min: 45 }
-          - { idx: 3, title: "Modules, packages, imports", est_min: 40 }
-          - { idx: 4, title: "Exceptions and error design", est_min: 50 }
-          - { idx: 5, title: "OOP the Python way", est_min: 60 }
-          - { idx: 6, title: "pathlib, file IO, JSON/CSV, encodings", est_min: 45 }
-          - { idx: 7, title: "Mutable default args and other JS-dev traps", est_min: 35 }
-      - code: m1.2
-        title: Typing and data modelling
+          - { idx: 1, title: "Decorators and what they're really doing" }
+          - { idx: 2, title: "Context managers and cleanup" }
+          - { idx: 3, title: "Generators and yield" }
+          - { idx: 4, title: "Type hints, generics, Protocol (the TypeScript mental model)" }
+          - { idx: 5, title: "Traps that catch JS developers" }
+      - code: s1.2
+        title: Pydantic v2
         priority: core
         tier: S
+        note: The most important module in this stage. Pydantic is the type system of the AI ecosystem.
         topics:
-          - { idx: 1, title: "Type hints and generics (TS mental model)", est_min: 55 }
-          - { idx: 2, title: "mypy / pyright in practice", est_min: 40 }
-          - { idx: 3, title: "dataclasses vs pydantic v2", est_min: 50 }
-          - { idx: 4, title: "Validators, Field constraints, pydantic-settings", est_min: 55 }
-          - { idx: 5, title: "Why pydantic is the type system of the AI ecosystem", est_min: 30 }
-      - code: m1.3
+          - { idx: 1, title: "Models, validation, model_validate and model_dump" }
+          - { idx: 2, title: "Field constraints and custom validators" }
+          - { idx: 3, title: "Settings and config with pydantic-settings" }
+          - { idx: 4, title: "Why every AI library is built on this" }
+      - code: s1.3
         title: Async Python
         priority: core
         tier: S
         topics:
-          - { idx: 1, title: "asyncio vs the JS event loop", est_min: 55, animations: [anim-event-loop-compare] }
-          - { idx: 2, title: "gather, TaskGroup, as_completed, cancellation", est_min: 55 }
-          - { idx: 3, title: "Semaphores and bounded concurrency", est_min: 50, animations: [anim-semaphore-throttle] }
-          - { idx: 4, title: "httpx.AsyncClient: pooling, timeouts, retries", est_min: 55, animations: [anim-retry-backoff-jitter] }
-          - { idx: 5, title: "Generators and async generators (streaming)", est_min: 50 }
-          - { idx: 6, title: "Threads, processes and the GIL in one page", est_min: 30 }
-      - code: m1.4
+          - { idx: 1, title: "asyncio vs the JS event loop", animations: [anim-event-loop-compare] }
+          - { idx: 2, title: "gather, TaskGroup, cancellation" }
+          - { idx: 3, title: "Bounded concurrency with Semaphore", animations: [anim-semaphore-throttle] }
+          - { idx: 4, title: "httpx async: pooling, timeouts, backoff with jitter", animations: [anim-retry-backoff-jitter] }
+          - { idx: 5, title: "Async generators and streaming" }
+          - { idx: 6, title: "Threads, processes and the GIL in one page" }
+      - code: s1.4
         title: Tooling and testing
         priority: core
         tier: S
         topics:
-          - { idx: 1, title: "uv, pyproject, lockfiles", est_min: 40 }
-          - { idx: 2, title: "ruff, pre-commit", est_min: 30 }
-          - { idx: 3, title: "pytest: fixtures, parametrize, asyncio", est_min: 60 }
-          - { idx: 4, title: "Mocking HTTP with respx", est_min: 40 }
-          - { idx: 5, title: "Structured logging and secret hygiene", est_min: 45 }
-      - code: m1.5
+          - { idx: 1, title: "uv and pyproject" }
+          - { idx: 2, title: "ruff" }
+          - { idx: 3, title: "pytest with async and HTTP mocking" }
+          - { idx: 4, title: "Structured logging and secret hygiene" }
+      - code: s1.5
         title: FastAPI
         priority: core
         tier: S
         topics:
-          - { idx: 1, title: "App, routers, models, OpenAPI", est_min: 55 }
-          - { idx: 2, title: "Dependency injection (the concept Express lacks)", est_min: 60 }
-          - { idx: 3, title: "Middleware, exception handlers, CORS", est_min: 45 }
-          - { idx: 4, title: "StreamingResponse and SSE", est_min: 60 }
-          - { idx: 5, title: "WebSockets and lifespan events", est_min: 45 }
-          - { idx: 6, title: "Auth: API keys, JWT, OAuth2 flows", est_min: 55 }
-          - { idx: 7, title: "Testing FastAPI with httpx", est_min: 45 }
-      - code: m1.6
-        title: Postgres and SQL
+          - { idx: 1, title: "Routers, models, automatic OpenAPI" }
+          - { idx: 2, title: "Dependency injection — the concept Express doesn't have" }
+          - { idx: 3, title: "Middleware, exception handlers, CORS" }
+          - { idx: 4, title: "Streaming responses and Server-Sent Events" }
+          - { idx: 5, title: "Auth: API keys and JWT" }
+          - { idx: 6, title: "Testing a FastAPI app" }
+      - code: s1.6
+        title: Postgres conversion (you know MySQL)
         priority: core
         tier: B
+        note: Differences and AI-specific parts only. No SQL fundamentals.
         topics:
-          - { idx: 1, title: "Relational vs document modelling (port a Mongo schema)", est_min: 60 }
-          - { idx: 2, title: "DDL, constraints, normalisation, JSONB", est_min: 55 }
-          - { idx: 3, title: "Joins, aggregates, CTEs, window basics", est_min: 60 }
-          - { idx: 4, title: "Indexes and EXPLAIN ANALYZE", est_min: 60, animations: [anim-index-scan-vs-seek] }
-          - { idx: 5, title: "Transactions, isolation, pooling", est_min: 50 }
-          - { idx: 6, title: "SQLAlchemy 2.0 async + Alembic", est_min: 70 }
-          - { idx: 7, title: "Full-text search with tsvector", est_min: 45, note: "needed for hybrid retrieval in M3.6" }
-      - code: m1.7
+          - { idx: 1, title: "MySQL to Postgres: what actually bites" }
+          - { idx: 2, title: "Reading Postgres EXPLAIN ANALYZE", animations: [anim-index-scan-vs-seek] }
+          - { idx: 3, title: "GIN, partial and expression indexes; JSONB" }
+          - { idx: 4, title: "Full-text search with tsvector", note: "needed for hybrid retrieval in s3.6" }
+          - { idx: 5, title: "pgvector: columns, distance operators, HNSW and IVFFlat" }
+      - code: s1.7
         title: Docker and local infrastructure
         priority: core
         tier: B
         topics:
-          - { idx: 1, title: "Images, layers, Dockerfile for Python", est_min: 55, animations: [anim-docker-layers] }
-          - { idx: 2, title: "docker compose: api + postgres + redis", est_min: 55 }
-          - { idx: 3, title: "Env, secrets, healthchecks, image size", est_min: 40 }
-          - { idx: 4, title: "Deploy a container to a PaaS", est_min: 50 }
-      - code: m1.8
-        title: "ML/AI intuition — the cheap 8 hours"
+          - { idx: 1, title: "Images, layers, a good Python Dockerfile", animations: [anim-docker-layers] }
+          - { idx: 2, title: "docker compose: api, postgres, redis" }
+          - { idx: 3, title: "Env, secrets, healthchecks" }
+          - { idx: 4, title: "Deploying a container somewhere real" }
+      - code: s1.8
+        title: AI intuition — the cheap 8 hours
         priority: core
         tier: S
-        time_box_h: 8
-        stop_condition: >
-          You can explain tokens, embeddings, similarity, temperature and hallucination
-          to a non-technical friend in 2 minutes each. Then close the tab.
-          Opening Khan Academy means this module has failed.
+        note: >
+          Conceptual only. No math homework, no derivations. Enough is when you can
+          explain each one to a non-technical friend in two minutes.
         topics:
-          - { idx: 1, title: "What a token is (run a tokenizer)", est_min: 45 }
-          - { idx: 2, title: "Next-token prediction and why models hallucinate", est_min: 45 }
-          - { idx: 3, title: "What an embedding represents", est_min: 50 }
-          - { idx: 4, title: "Temperature and probability distributions", est_min: 40 }
-          - { idx: 5, title: "Attention, conceptually only", est_min: 60 }
-          - { idx: 6, title: "Pretraining vs instruction tuning vs RLHF", est_min: 40 }
-    projects: [mp-1.1, mp-1.2]
-    gate:
-      - { id: g1.1, check: manual, text: "Both mini-projects deployed with public URLs and READMEs" }
-      - { id: g1.2, check: ci,     text: "ruff clean, pyright clean, pytest >=70% on MP-1.1" }
-      - { id: g1.3, check: manual, text: "From a blank file: SSE endpoint + 3 concurrent async calls with a concurrency cap" }
-      - { id: g1.4, check: manual, text: "3-table schema with FKs and indexes; can read an EXPLAIN ANALYZE" }
-      - { id: g1.5, check: manual, text: "docker compose up works on a fresh machine" }
-      - { id: g1.6, check: quiz,   text: "Explain tokens, embeddings, temperature without notes" }
-      - { id: g1.7, check: counter, text: "60 DSA problems in Python", target: 60 }
+          - { idx: 1, title: "What a token is, and why JSON costs more than prose" }
+          - { idx: 2, title: "Next-token prediction and why models hallucinate" }
+          - { idx: 3, title: "What an embedding represents, and what similarity means" }
+          - { idx: 4, title: "Temperature, attention, and how models get trained — the short version" }
+    projects: [p-1.1, p-1.2]
+    readiness:                 # self-check, never a lock
+      - "A FastAPI endpoint streaming SSE while making concurrent async calls with a cap — written without looking things up"
+      - "You can explain what pydantic does when validation fails, and why that error is useful"
+      - "docker compose up works on a clean machine"
+      - "A pgvector table with an HNSW index exists, and you know what ef_search changes"
+      - "Tokens, embeddings and temperature explainable without notes"
 
-  # ───────────────────────────────────────────────────────────────── MONTH 2
+  # ─────────────────────────────────────────────────────────── STAGE 2
   - idx: 2
-    code: m2
+    code: s2
     title: LLM APIs and production prompting
     outcome: >
-      I can build a reliable, streaming, cost-instrumented LLM feature against any of the
-      three major providers, and get structured output I can trust in production.
-    hours_est: 130
+      I can build a reliable, streaming, cost-instrumented LLM feature against any of
+      the three major providers, and get structured output I can trust.
     modules:
-      - { code: m2.1, title: "The anatomy of an LLM call", priority: core, tier: S, topic_count: 6,
+      - { code: s2.1, title: "What an LLM call actually is", priority: core, tier: S, topic_count: 6,
           animations: [anim-tokenizer, anim-temperature-distribution, anim-context-window-budget] }
-      - { code: m2.2, title: "Streaming, end to end", priority: core, tier: S, topic_count: 5,
-          animations: [anim-streaming-ttft], note: "your unfair advantage — every project streams" }
-      - { code: m2.3, title: "Production prompt engineering", priority: core, tier: S, topic_count: 8,
+      - { code: s2.2, title: "Streaming, end to end", priority: core, tier: S, topic_count: 5,
+          animations: [anim-streaming-ttft], note: "your advantage — every project streams" }
+      - { code: s2.3, title: "Production prompt engineering", priority: core, tier: S, topic_count: 8,
           animations: [anim-prompt-anatomy, anim-fewshot-selection] }
-      - { code: m2.4, title: "Structured output you can trust", priority: core, tier: S, topic_count: 5,
+      - { code: s2.4, title: "Structured output you can trust", priority: core, tier: S, topic_count: 5,
           animations: [anim-structured-repair-loop] }
-      - { code: m2.5, title: "Reliability and cost engineering", priority: core, tier: S, topic_count: 6,
+      - { code: s2.5, title: "Reliability and cost", priority: core, tier: S, topic_count: 6,
           animations: [anim-fallback-chain, anim-prompt-cache-hit] }
-      - { code: m2.6, title: "Multimodal basics", priority: stretch, tier: B, topic_count: 3 }
-    projects: [mp-2.1, mp-2.2]
-    platform_phase: 1
-    gate:
-      - { id: g2.1, check: manual, text: "One interface, three providers, same feature" }
-      - { id: g2.2, check: manual, text: "Cancel actually stops upstream billing (prove in logs)" }
-      - { id: g2.3, check: manual, text: "Can state INR cost of one request from own instrumentation" }
-      - { id: g2.4, check: ci,     text: "Extraction >=90% field accuracy on golden set" }
-      - { id: g2.5, check: manual, text: "Kill primary provider key -> graceful degradation, no 500" }
-      - { id: g2.6, check: repo,   text: "prompts/ directory with numbered versions" }
-      - { id: g2.7, check: manual, text: "Written: 5 prompt failure modes I hit, with fixes" }
+      - { code: s2.6, title: "Multimodal basics", priority: optional, tier: B, topic_count: 3 }
+    projects: [p-2.1, p-2.2]
+    readiness:
+      - "One interface, three providers, same feature"
+      - "Cancelling a stream actually stops upstream billing, provable in logs"
+      - "You can state what one request costs, from your own instrumentation"
+      - "Killing the primary provider key degrades gracefully instead of 500-ing"
+      - "A prompts/ directory with versions; any output traces back to a version"
+      - "You've hit five distinct prompt failure modes and know what fixed each"
 
-  # ───────────────────────────────────────────────────────────────── MONTH 3
+  # ─────────────────────────────────────────────────────────── STAGE 3
   - idx: 3
-    code: m3
-    title: RAG, and how to know it works
+    code: s3
+    title: RAG for real, and how to know it works
     outcome: >
-      I can build a retrieval system over a messy real corpus, measure its retrieval
-      quality with numbers, and improve those numbers deliberately.
-    hours_est: 135
-    note: "Most important month. RAG appears in effectively every AI engineer JD."
+      I can build retrieval over a messy real corpus, measure its quality with numbers,
+      and improve those numbers deliberately.
+    opener:
+      kind: audit
+      title: Audit your existing RAG project
+      detail: >
+        Run the project you already built against 12 questions about ingestion, chunking,
+        retrieval and measurement. Most will have no answer yet. That list is this stage's
+        syllabus, and your project becomes version 1 of the results table in p-3.1.
     modules:
-      - { code: m3.1, title: "The retrieval problem", priority: core, tier: S, topic_count: 3,
+      - { code: s3.1, title: "The retrieval problem, properly", priority: core, tier: S, topic_count: 3,
           animations: [anim-rag-pipeline-overview] }
-      - { code: m3.2, title: "Embeddings in practice", priority: core, tier: S, topic_count: 5,
+      - { code: s3.2, title: "Embeddings in practice", priority: core, tier: S, topic_count: 5,
           animations: [anim-embedding-space] }
-      - { code: m3.3, title: "Ingestion: the unglamorous 60%", priority: core, tier: S, topic_count: 6 }
-      - code: m3.4
+      - { code: s3.3, title: "Ingestion — the unglamorous 60%", priority: core, tier: S, topic_count: 6 }
+      - code: s3.4
         title: Chunking
         priority: core
         tier: S
         topics:
-          - { idx: 1, title: "Fixed-size and recursive splitting", est_min: 50 }
-          - { idx: 2, title: "Token-aware sizing", est_min: 40 }
+          - { idx: 1, title: "Fixed-size and recursive splitting" }
+          - { idx: 2, title: "Token-aware sizing" }
           - idx: 3
             title: Structure-aware chunking
-            est_min: 55
-            # fully worked example — see docs/04-CURRICULUM-MAP.md §3
+            # worked example — docs/04-CURRICULUM-MAP.md §5
             concepts:
               outcome: >
-                I can pick a chunking strategy from the shape of a document, and predict
-                what it will do to recall.
-              primary: { kind: slides, deck: chunking-strategies, slides: 14 }
-              primary_rationale: >
-                No single video covers structure-aware + parent-document + contextual
-                retrieval at production depth; the good material is in primary sources.
-              curated_notes: content/concepts/m3.4.t3.mdx
+                You'll be able to look at a document and pick a chunking strategy from its
+                shape, and predict what that choice does to your results.
+              sources:
+                - { kind: deck, id: chunking-strategies, slides: 14, label: Slides, role: main,
+                    reason: "no single video covers structure-aware, parent-document and contextual retrieval together" }
+                - { kind: youtube, label: Visual, role: alternate, reason: "shorter, diagram-led" }
+                - { kind: youtube, label: Deeper, role: alternate, reason: "edge cases and internals" }
               analogy: >
-                You split React apps by component boundaries, not by line count, because
-                boundaries carry meaning. A markdown '##' header is a component boundary.
-                Splitting a doc every 512 characters is like splitting a codebase every
-                512 characters.
+                You split React apps by component, not by line count, because components are
+                where meaning naturally ends. A markdown heading is the same kind of boundary.
+                Cutting a document every 512 characters is like cutting a codebase every 512
+                characters.
               animations: [anim-chunk-strategies, anim-parent-doc-retrieval]
-              primary_docs:
-                - LangChain text splitters
-                - "Anthropic: Contextual Retrieval"
-                - pgvector README
-              glossary: [chunk, overlap, parent-document retrieval, sentence window,
-                         contextual retrieval, propositional chunking]
+              docs: ["LangChain text splitters", "Anthropic contextual retrieval", "pgvector README"]
+              glossary: [chunk, overlap, parent-document retrieval, sentence window, contextual retrieval]
+              printable: "one page: six strategies, when each wins, metadata to attach"
             practice:
-              drills:
-                - { kind: code-lab, runtime: pyodide, title: "Recursive splitter with exact overlap" }
-                - { kind: code-lab, runtime: sandbox, title: "Header-aware splitter carrying header path as metadata" }
-                - { kind: tool-drill, runtime: local+verify, title: "4 chunk sizes over a 200-page PDF -> recall@5 table",
-                    verify: metrics-fingerprint }
-              break_it: >
-                Set overlap to 0 and chunk size to 128. Find a question that now fails.
-                Explain why in 3 sentences.
-            mini_project: rolls-up-to:mp-3.1
-          - { idx: 4, title: "Semantic and propositional chunking", est_min: 50 }
-          - { idx: 5, title: "Parent-document and sentence-window retrieval", est_min: 50,
-              animations: [anim-parent-doc-retrieval] }
-          - { idx: 6, title: "Contextual retrieval", est_min: 45, animations: [anim-contextual-retrieval] }
-          - { idx: 7, title: "Measuring chunk size vs recall vs cost on YOUR corpus", est_min: 60 }
-      - { code: m3.5, title: "Vector storage (pgvector primary, Qdrant contrast)", priority: core, tier: S,
+              - { mode: read_and_predict, title: "Where does this recursive splitter cut this paragraph?" }
+              - { mode: spec_then_verify, title: "Spec a header-aware splitter; review the AI implementation for no-heading, nested-heading and trailing-heading cases" }
+              - { mode: tool_drill, title: "Four chunk sizes over a 200-page PDF into pgvector; submit the recall@5 table", verify: metrics-fingerprint }
+              - { mode: decision_drill, title: "900-page regulatory PDF, clause-level questions — pick a strategy and say what you're trading away" }
+              - { mode: break_it, title: "Overlap 0, chunk size 128. Find a question that now fails. Explain why." }
+            mini_project: rolls-up-to:p-3.1
+          - { idx: 4, title: "Semantic and propositional chunking" }
+          - { idx: 5, title: "Parent-document and sentence-window retrieval", animations: [anim-parent-doc-retrieval] }
+          - { idx: 6, title: "Contextual retrieval", animations: [anim-contextual-retrieval] }
+          - { idx: 7, title: "Measuring chunk size against recall and cost on your own corpus" }
+      - { code: s3.5, title: "Vector storage (pgvector primary, Qdrant contrast)", priority: core, tier: S,
           topic_count: 5, animations: [anim-hnsw-traversal] }
-      - { code: m3.6, title: "Retrieval quality: hybrid, rerank, query understanding", priority: core, tier: S,
-          topic_count: 6, animations: [anim-hybrid-rrf, anim-reranker, anim-query-rewriting] }
-      - { code: m3.7, title: "Context assembly (context engineering)", priority: core, tier: A,
-          topic_count: 5, animations: [anim-lost-in-middle, anim-context-window-budget] }
-      - { code: m3.8, title: "Retrieval and generation evaluation", priority: core, tier: A,
-          topic_count: 7, animations: [anim-eval-loop, anim-judge-bias],
-          note: "PROMOTED from the video's B-tier. Build the ruler BEFORE optimising." }
-    projects: [mp-3.1, mp-3.2]
-    platform_phase: 2
-    sequencing_note: >
-      Week 11 builds the eval harness (m3.8) BEFORE the optimisation work (m3.6).
-      Optimising retrieval without measurement is how people spend a month getting worse.
-    gate:
-      - { id: g3.1, check: url,    text: "MP-3.1 live with verifiable citations" }
-      - { id: g3.2, check: repo,   text: ">=50 hand-written golden Q->source pairs committed" }
-      - { id: g3.3, check: ci,     text: "Eval harness fails a deliberately-bad PR" }
-      - { id: g3.4, check: repo,   text: ">=6 pipeline variants with recall@5, faithfulness, p95, INR/query" }
-      - { id: g3.5, check: manual, text: "Can argue RAG vs long-context vs fine-tuning with own numbers" }
-      - { id: g3.6, check: repo,   text: "Hand error-analysis of 20 failures, categorised" }
-      - { id: g3.7, check: manual, text: "Hybrid + rerank implemented; can attribute the gain to each" }
+      - { code: s3.6, title: "Retrieval quality: hybrid, reranking, query understanding", priority: core,
+          tier: S, topic_count: 6, animations: [anim-hybrid-rrf, anim-reranker, anim-query-rewriting] }
+      - { code: s3.7, title: "Context assembly", priority: core, tier: A, topic_count: 5,
+          animations: [anim-lost-in-middle, anim-context-window-budget] }
+      - { code: s3.8, title: "Evaluation", priority: core, tier: A, topic_count: 7,
+          animations: [anim-eval-loop, anim-judge-bias],
+          note: "Promoted from the video's B-tier. Comes BEFORE s3.6 in the path — build the ruler first." }
+    sequencing: [s3.1, s3.2, s3.3, s3.4, s3.5, s3.8, s3.6, s3.7]
+    projects: [p-3.1, p-3.2]
+    readiness:
+      - "A hand-written golden set in the repo"
+      - "The eval suite runs in CI and you've watched it fail a deliberately bad change"
+      - "A before/after table: 6+ variants with recall@5, faithfulness, p95, INR per query"
+      - "You can argue RAG vs long context vs fine-tuning from your own numbers"
+      - "A hand error-analysis of 20 failures, grouped into categories"
+      - "You can separate how much hybrid search helped from how much reranking helped"
 
-  # ───────────────────────────────────────────────────────────────── MONTH 4
+  # ─────────────────────────────────────────────────────────── STAGE 4
   - idx: 4
-    code: m4
+    code: s4
     title: Tool use, agents, and MCP
     outcome: >
       I can build an agent that takes real actions safely, and I've published an MCP
-      server that other people's AI tools can use.
-    hours_est: 130
+      server other people's AI tools can use.
     modules:
-      - { code: m4.1, title: "Function/tool calling, deeply", priority: core, tier: A, topic_count: 6,
+      - { code: s4.1, title: "Tool calling, deeply", priority: core, tier: A, topic_count: 6,
           animations: [anim-tool-call-loop, anim-tool-description-matters] }
-      - { code: m4.2, title: "Build an agent from scratch, no framework", priority: core, tier: A,
-          topic_count: 5, animations: [anim-agent-loop],
-          note: "framework-free on purpose: the difference between 'used LangGraph' and 'understands agents'" }
-      - { code: m4.3, title: "Memory and state", priority: core, tier: A, topic_count: 4,
+      - { code: s4.2, title: "The agent loop", priority: core, tier: A, topic_count: 5,
+          animations: [anim-agent-loop],
+          note: "hand-written primitive — no framework, ~60 lines" }
+      - { code: s4.3, title: "Memory and state", priority: core, tier: A, topic_count: 4,
           animations: [anim-context-compaction] }
-      - { code: m4.4, title: "Orchestration patterns", priority: core, tier: A, topic_count: 5,
+      - { code: s4.4, title: "Orchestration patterns", priority: core, tier: A, topic_count: 5,
           animations: [anim-orchestration-patterns, anim-human-in-loop],
           note: "multi-agent is usually the wrong default; learn it, then don't reach for it" }
-      - { code: m4.5, title: "One framework: LangGraph", priority: core, tier: A, topic_count: 4,
+      - { code: s4.5, title: "One framework: LangGraph", priority: core, tier: A, topic_count: 4,
           animations: [anim-langgraph-state] }
-      - { code: m4.6, title: "MCP (Model Context Protocol)", priority: core, tier: A, topic_count: 5,
+      - { code: s4.6, title: "MCP", priority: core, tier: A, topic_count: 5,
           animations: [anim-mcp-handshake, anim-mcp-vs-bespoke] }
-      - { code: m4.7, title: "Agent safety and UX", priority: core, tier: A, topic_count: 5,
+      - { code: s4.7, title: "Agent safety and interface", priority: core, tier: A, topic_count: 5,
           animations: [anim-indirect-injection] }
-    projects: [mp-4.1, mp-4.2]
-    platform_phase: 3
-    gate:
-      - { id: g4.1, check: repo,   text: "From-scratch agent loop with budget enforcement + loop detection" }
-      - { id: g4.2, check: repo,   text: "Same agent in LangGraph with Postgres checkpointing, resumable" }
-      - { id: g4.3, check: mcp,    text: "MCP server published, installable in one command" }
-      - { id: g4.4, check: manual, text: "Human-approval gate: stops, waits, resumes, aborts" }
-      - { id: g4.5, check: url,    text: "Trace dashboard: live reasoning, tool timeline, cost, replay" }
-      - { id: g4.6, check: ci,     text: "Agent eval suite over >=30 scenarios, pass rate reported honestly" }
-      - { id: g4.7, check: quiz,   text: "MCP vs A2A; why multi-agent is usually wrong" }
+    projects: [p-4.1, p-4.2]
+    readiness:
+      - "Your own agent loop, hand-written, with budget enforcement and loop detection"
+      - "The same agent in LangGraph with Postgres checkpointing, resumable mid-run"
+      - "An MCP server a stranger can install in one command"
+      - "An approval gate that survives a server restart"
+      - "An agent eval suite over 30+ scenarios, pass rate reported honestly"
+      - "You can explain MCP vs A2A, and why multi-agent is usually the wrong default"
 
-  # ───────────────────────────────────────────────────────────────── MONTH 5
+  # ─────────────────────────────────────────────────────────── STAGE 5
   - idx: 5
-    code: m5
-    title: AI system design, LLMOps, production hardening
+    code: s5
+    title: AI system design, operations, and security
     outcome: >
-      I can design, deploy, observe and defend a real AI system, and I have the dashboards
-      and incident write-ups to prove it.
-    hours_est: 135
+      I can design, deploy, observe and defend a real AI system, and I have the
+      dashboards and incident write-ups to prove it.
     modules:
-      - { code: m5.1, title: "AI system design as a discipline", priority: core, tier: A, topic_count: 4,
+      - { code: s5.1, title: "AI system design as a discipline", priority: core, tier: A, topic_count: 4,
           animations: [anim-ai-system-anatomy],
-          practice_note: "whiteboard 8 classic AI systems, 40 min each, out loud, on paper" }
-      - { code: m5.2, title: "Serving architecture at scale", priority: core, tier: A, topic_count: 5,
+          practice_note: "whiteboard eight systems end to end, out loud, on paper" }
+      - { code: s5.2, title: "Serving architecture", priority: core, tier: A, topic_count: 5,
           animations: [anim-queue-backpressure] }
-      - { code: m5.3, title: "Caching, cost and routing", priority: core, tier: A, topic_count: 5,
+      - { code: s5.3, title: "Caching, cost and routing", priority: core, tier: A, topic_count: 5,
           animations: [anim-cache-tiers, anim-model-routing] }
-      - { code: m5.4, title: "Observability", priority: core, tier: A, topic_count: 5,
+      - { code: s5.4, title: "Observability", priority: core, tier: A, topic_count: 5,
           animations: [anim-trace-waterfall] }
-      - { code: m5.5, title: "Evaluation as engineering", priority: core, tier: A, topic_count: 5,
+      - { code: s5.5, title: "Evaluation as engineering", priority: core, tier: A, topic_count: 5,
           animations: [anim-eval-ci-gate, anim-canary-rollback] }
-      - { code: m5.6, title: "Security for AI systems", priority: core, tier: A, topic_count: 5,
+      - { code: s5.6, title: "Security", priority: core, tier: A, topic_count: 5,
           animations: [anim-tenant-isolation-bug] }
-      - { code: m5.7, title: "Deployment and CI/CD", priority: core, tier: B, topic_count: 5 }
-      - { code: m5.8, title: "Fine-tuning: when, not how", priority: stretch, tier: B, topic_count: 3,
-          time_box_h: 6, note: "video: overrated for 95% of AI engineers. Agreed." }
-    projects: [mp-5.1, mp-5.2, mp-5.3]
-    platform_phase: 4
-    gate:
-      - { id: g5.1, check: url,    text: "One system on AWS/GCP in containers, with CI/CD" }
-      - { id: g5.2, check: manual, text: "Langfuse tracing on all three projects + cost dashboard" }
-      - { id: g5.3, check: ci,     text: "CI eval gate blocking merges, demonstrated" }
-      - { id: g5.4, check: repo,   text: "Load test report: real p95 + documented breaking point" }
-      - { id: g5.5, check: repo,   text: "Cost cut by a measurable % via caching/routing" }
-      - { id: g5.6, check: manual, text: "8 AI system designs whiteboarded; 2 recorded and reviewed" }
-      - { id: g5.7, check: repo,   text: "OWASP LLM Top 10 pass with >=3 real fixes committed" }
-      - { id: g5.8, check: repo,   text: "One written postmortem" }
+      - { code: s5.7, title: "Deployment and CI/CD", priority: core, tier: B, topic_count: 5 }
+      - { code: s5.8, title: "Fine-tuning: when, not how", priority: optional, tier: B, topic_count: 3,
+          note: "video: overrated for 95% of AI engineers. Agreed." }
+    projects: [p-5.1, p-5.2, p-5.3]
+    readiness:
+      - "One system on AWS or GCP, in containers, with CI/CD"
+      - "Tracing across all three projects, and a cost dashboard you can screenshot"
+      - "A CI eval gate blocking merges, demonstrated"
+      - "A load-test report with a real p95 and a documented breaking point"
+      - "Cost measurably reduced through caching and routing — you know the number"
+      - "Eight system designs whiteboarded out loud, two recorded and watched back"
+      - "OWASP LLM Top 10 reviewed against your own code, with real fixes committed"
+      - "One written postmortem"
 
-  # ───────────────────────────────────────────────────────────────── MONTH 6
+  # ─────────────────────────────────────────────────────────── STAGE 6
   - idx: 6
-    code: m6
-    title: Capstone, tenancy, portfolio, applications
-    outcome: "I have three flagship systems, a public body of writing, and I am interviewing."
-    hours_est: 135
+    code: s6
+    title: Capstone and portfolio
+    outcome: "I have three flagship systems and I'm interviewing."
     modules:
-      - { code: m6.1, title: "Capstone (NexHireAI)", priority: core, topic_count: 4 }
-      - { code: m6.2, title: "Specialisation spike — pick exactly one", priority: core, topic_count: 3 }
-      - { code: m6.3, title: "Portfolio engineering", priority: core, topic_count: 4 }
-      - { code: m6.4, title: "Interview preparation", priority: core, topic_count: 4 }
-      - { code: m6.5, title: "Applications as a pipeline", priority: core, topic_count: 2 }
-    projects: [mp-6.1]
-    platform_phase: 5
-    gate:
-      - { id: g6.1, check: url,    text: "Capstone live, multi-tenant, real users, tenant-isolation test" }
-      - { id: g6.2, check: repo,   text: "3 flagship projects with architecture docs, numbers, demo videos" }
-      - { id: g6.3, check: counter, text: "10+ technical posts published", target: 10 }
-      - { id: g6.4, check: manual, text: "LinkedIn + GitHub + site consistent and evidence-led" }
-      - { id: g6.5, check: counter, text: "12 mock system designs, 3 with another human", target: 12 }
-      - { id: g6.6, check: manual, text: "Applications out, pipeline tracked, interviews booked" }
+      - { code: s6.1, title: "Capstone — AI hiring copilot (you name it)", priority: core, topic_count: 4 }
+      - { code: s6.2, title: "One specialisation", priority: core, topic_count: 3 }
+      - { code: s6.3, title: "Portfolio", priority: core, topic_count: 4 }
+      - { code: s6.4, title: "Interview preparation", priority: core, topic_count: 4 }
+      - { code: s6.5, title: "Applications as a pipeline", priority: core, topic_count: 2 }
+    projects: [p-6.1]
+    readiness:
+      - "Capstone live, multi-tenant, real users, with a tenant-isolation test"
+      - "Three flagship projects with architecture docs, numbers and demo videos"
+      - "GitHub, LinkedIn and site consistent and evidence-led"
+      - "Twelve mock system designs, some with another person"
+      - "Applications out, pipeline tracked"
 
-  # ───────────────────────────────────────────────────────────────── MONTH 7
+  # ─────────────────────────────────────────────────────────── STAGE 7
   - idx: 7
-    code: m7
-    title: Interview loop, depth, optionality
+    code: s7
+    title: Interviews, depth, optionality
     outcome: "Offers — and a body of work that compounds either way."
-    hours_est: 130
     modules:
-      - { code: m7.1, title: "Interview execution and same-day debriefs", priority: core, topic_count: 3 }
-      - { code: m7.2, title: "Depth on demand (fill the gap the interview exposed)", priority: core, topic_count: 3 }
-      - { code: m7.3, title: "Optional deep dives: LoRA, vLLM, GraphRAG, voice, DSPy", priority: stretch, topic_count: 4 }
-      - { code: m7.4, title: "Negotiation and role screening", priority: core, topic_count: 2 }
-    projects: [mp-7.1]
-    gate:
-      - { id: g7.1, check: manual, text: "Every round debriefed in writing within 2 hours" }
-      - { id: g7.2, check: manual, text: "Each exposed gap closed before the next round" }
-      - { id: g7.3, check: counter, text: "One small public ship per fortnight", target: 2 }
+      - { code: s7.1, title: "Interview execution and same-day debriefs", priority: core, topic_count: 3 }
+      - { code: s7.2, title: "Depth on demand — fill the gap the interview exposed", priority: core, topic_count: 3 }
+      - { code: s7.3, title: "Optional deep dives: LoRA, vLLM, GraphRAG, voice, DSPy", priority: optional, topic_count: 4 }
+      - { code: s7.4, title: "Negotiation and screening a role for real AI work", priority: core, topic_count: 2 }
+    projects: [p-7.1]
+    readiness:
+      - "Every round debriefed in writing the same day"
+      - "Each exposed gap closed before the next round"
 
-# ───────────────────────────────────────────────────────────── cut order
-degrade_gracefully:
-  cut_first: [stretch topics, secondary projects (mp-x.2), platform features, specialisation depth]
-  never_cut:
-    - eval work (m3.8, m5.5)
-    - the deploys
-    - the weekly writing
-    - the gates
-  rationale: >
-    A roadmap where months slip but gates hold still produces a hireable engineer.
-    A roadmap where gates slip to protect the schedule produces a certificate collector.
+# ─────────────────────────────────────────────────────── if you need to cut
+cut_order: [optional modules, secondary projects, specialisation depth]
+never_cut:
+  - the evaluation work (s3.8 and s5.5)
+  - the deploys
+  - the readiness self-checks
+rationale: >
+  These three are the difference between finishing this path and finishing a playlist.
 
-platform_rule:
-  cap_pct_of_weekly_hours: 15
-  starts: month 2
-  constraint: every phase must double as a required roadmap mini-project
-  rationale: see docs/01-PROFILE-AND-GAP-ANALYSIS.md trap 3
+# ─────────────────────────────────────────────────────── stopping and returning
+pause_and_resume:
+  expected: true               # exams, illness, busy months — costs nothing but elapsed time
+  on_return:
+    - open exactly where you stopped
+    - 'a "where you left off" card: what you had just learned and what you were building'
+    - two-minute refresher of the last three concepts
+    - due flashcards capped so returning never feels like a backlog
+    - optional one-screen recap of the current stage

@@ -1,466 +1,392 @@
-# 05 — Learning Platform: Product & Technical Spec
+# 05 — AmpratAI: Product & Technical Spec
 
-**Working name:** `Forge` (a place where you build things, not a place where you watch things)
-**Users:** exactly one, at first. You. Design for one user, brilliantly; generalise later.
-**Status:** spec only. Build starts Month 2, Phase 1. Nothing is built in Month 1 — see §9.
+**Name:** AmpratAI · **AI tutor:** Amprat Assistant
+**User:** one. You. Designed for one person, properly.
+**Built by:** Claude. Not you.
 
 ---
 
-## 1. The problem this platform actually solves
+## 1. Who builds this, and what you're responsible for
 
-You don't have a *content* problem. Everything on this roadmap exists for free on YouTube
-and in vendor docs. You have four different problems:
+**Claude builds AmpratAI end to end** — the app, the content, the animations, the decks, the
+practice items, the deployment. You don't write platform code, you don't author content, and
+you don't maintain it.
 
-| Problem | How every existing platform fails | What Forge does |
+**Your only job is to learn.** Open it, work through it, tell me what's confusing or missing,
+and I fix it.
+
+This removes what was the single biggest risk in the earlier version of this plan: spending
+six months building a beautiful learning platform and learning no AI. That risk is gone.
+
+## 2. What AmpratAI is for
+
+You don't have a content problem — everything on this roadmap exists somewhere for free. You
+have four different problems:
+
+| Problem | How the internet fails at it | What AmpratAI does |
 |---|---|---|
-| **Fragmentation** | 40 tabs, 6 courses, 3 note apps; concepts learned 5× in 5 places | One canonical path. One resource per concept. Everything at the point of use. |
-| **Passive consumption** | Video completion = "progress". You feel productive and learn nothing | A topic cannot be completed without code that runs and a project that ships |
-| **Invisible mechanism** | Talking heads and slides describe pipelines; you never *see* data move | An animation per concept showing the actual mechanism, interactively |
-| **No forcing function** | Nothing stops you drifting for three weeks | Gates, streaks, spaced repetition, and a public weekly commitment |
+| **Scatter** | 40 tabs, 6 half-done courses, the same concept explained five times in five places | One path, in order, with 1–3 chosen sources per topic and a reason for each |
+| **Passive watching** | A finished video feels like progress and isn't | Nothing counts as done without something that runs — a passing test, a live URL |
+| **Invisible mechanism** | Talking heads describe pipelines; you never *see* the data move | An animation per concept showing the actual mechanism, that you can step through and change |
+| **Losing the thread** | Come back after exams and you've forgotten where you were and why | Server-side progress on every device, plus a "where you left off" recap that takes two minutes |
 
-**Design thesis:** the platform's job is to *convert hours into shipped artifacts*, not to
-deliver content. Every feature is judged on that.
+**Design thesis:** AmpratAI's job is to turn hours into understanding and shipped systems.
+Every feature is judged on that and nothing else.
 
-## 2. Product principles (use these to kill feature ideas)
+## 3. Principles
 
-1. **The IDE is where work happens.** Forge never replaces your local IDE for real projects. In-browser code is for drills only. Mini-projects always happen in your own editor, on your own machine, with your own git.
-2. **One canonical resource per concept.** Alternates are hidden behind a "still confused?" link. Choice is the enemy here.
-3. **Nothing completes without evidence.** Evidence = passing tests, a deployed URL, a committed file, or a written answer graded against a rubric.
-4. **Animations must show mechanism, not decoration.** If an animation doesn't answer "what actually moves, and in what order?", it doesn't ship.
-5. **Notes are yours and portable.** Plain markdown, synced to git. If Forge dies, your notes survive. Non-negotiable.
-6. **The platform dogfoods the roadmap.** The AI tutor is a RAG system. The prompt arena is an eval harness. The grader is an LLM-as-judge. Building Forge *is* the curriculum.
-7. **Boring where it doesn't matter.** No custom video player, no custom auth, no mobile app, no multi-tenancy (yet). Spend all novelty on the animation layer and the practice layer.
+1. **Plain language, always.** `04-CURRICULUM-MAP.md` §2 is the standard, and it's enforced by a check before anything ships.
+2. **Concepts first. Code with AI.** Understanding what a system does and why matters more than typing it. About ten primitives stay hand-written because interviews probe them.
+3. **Clean, uncrowded screens.** Designed for a 13.6" laptop. Two panes, not three. Anything optional is hidden until you ask for it.
+4. **No deadlines, no time boxes, no quotas.** Nothing in AmpratAI tells you to hurry, and nothing expires. Exams are expected.
+5. **Animations show mechanism, not decoration.** If it doesn't answer "what moves, in what order, and what changes it?", it doesn't ship.
+6. **Your IDE stays your IDE.** In-browser code is for small drills. Real projects happen on your machine with your own git.
+7. **Nothing is mandatory except the sequence.** Public posting, streaks, daily targets — all optional or absent.
 
-## 3. Information architecture
+## 4. The Concepts screen
 
-```
-Track  (your 7-month roadmap; later: other tracks)
-└── Month / Course            ×7      "Month 3 — RAG and how to know it works"
-    ├── outcome, hours, gate
-    └── Module                ×3–8    "M3.4 Chunking"
-        └── Topic             ×3–8    "Structure-aware chunking"
-            ├── ◆ CONCEPTS    checkpoint   video|slides + notes + animations
-            ├── ◆ PRACTICE    checkpoint   drills, tool tasks, prompt arena, debug
-            └── ◆ MINI-PROJECT checkpoint  brief + animated scenario + local build
-```
+Two panes. The left rail is gone — on a 13.6" screen three columns is too crowded, and its
+content moved into tabs and a collapsible drawer.
 
-Plus, at Month level: **Gate** (the pass/fail checklist from `02-ROADMAP.md`) and a
-**Month Capstone** where the month's topics integrate.
-
-Cross-cutting objects: `Note`, `Flashcard`, `Artifact` (shipped links), `DailyLog`,
-`WeeklyReview`, `Glossary`, `Trace` (real traces from your own projects, reused as teaching
-material — see §6.4).
-
-### Navigation model
-- **Path view** (default): vertical timeline of months → modules → topics, with gate locks and progress rings.
-- **Today view**: what you're doing right now — current checkpoint, timer, due flashcards, the one DSA pair, the weekly post status.
-- **Map view**: a dependency graph of all ~224 topics; shows what unlocks what. Genuinely useful for seeing *why* Month 1 exists.
-- **Search**: across notes, transcripts, glossary, code. Semantic + keyword (this is your hybrid-search project, dogfooded).
-
-## 4. `CONCEPTS` checkpoint — the three-pane learning surface
-
-This is the layout you described, specified concretely.
-
-### 4.1 Layout (desktop ≥ 1280px)
+### 4.1 Layout (desktop)
 
 ```
-┌────────────────────────────────────────────────────────────────────────────────┐
-│ Month 3 › M3.4 Chunking › Structure-aware chunking      ◷ 24:10  🔥 18  [S]   │
-├───────────────────┬────────────────────────────────┬───────────────────────────┤
-│ LEFT RAIL  (22%)  │  STAGE  (48%)                  │  ANIMATION LAB  (30%)     │
-│                   │                                │                           │
-│ ▸ Topic outline   │  ┌──────────────────────────┐  │  ┌─────────────────────┐  │
-│   (jumps video)   │  │  YouTube embed  OR       │  │  │                     │  │
-│ ─────────────     │  │  slide deck (MDX)        │  │  │   canvas / SVG      │  │
-│ ▸ Curated notes   │  │                          │  │  │                     │  │
-│   (the "textbook" │  │  chapters · 1.25× ·      │  │  └─────────────────────┘  │
-│   version, always │  │  A–B loop · captions     │  │  ◀ ▮▮ ▶  step 3 of 7     │
-│   visible while   │  └──────────────────────────┘  │  ── knobs ──              │
-│   the video plays)│  ┌──────────────────────────┐  │  chunk size  [====|--]    │
-│ ─────────────     │  │ TABS                     │  │  overlap     [==|----]    │
-│ ▸ Prereqs         │  │ My Notes | Curated |     │  │  ── caption ──            │
-│ ▸ Glossary terms  │  │ Transcript | Diagram |   │  │  "Headers keep the        │
-│ ▸ Primary docs    │  │ Ask Forge (AI) | Quiz    │  │   section title attached  │
-│   (read after)    │  │                          │  │   to every chunk, so the  │
-│                   │  │ timestamp-anchored notes │  │   retriever still knows   │
-│                   │  │ + code blocks + images   │  │   where it came from."    │
-│                   │  └──────────────────────────┘  │  [open fullscreen]        │
-├───────────────────┴────────────────────────────────┴───────────────────────────┤
-│ ← prev    [ mark concepts complete → unlocks Practice ]    next →   + flashcard│
-└────────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Stage 3 › Chunking › Structure-aware chunking            ●●●○○   [focus ⛶] │
+├──────────────────────────────────────────┬──────────────────────────────────┤
+│  STAGE   (≈62%)                          │  ANIMATION   (≈38%)   [⛶] [→|]  │
+│  ┌────────────────────────────────────┐  │  ┌────────────────────────────┐  │
+│  │  ▸ Main   Visual   Deeper   Slides │  │  │                            │  │
+│  │ ┌────────────────────────────────┐ │  │  │        canvas              │  │
+│  │ │                                │ │  │  │                            │  │
+│  │ │   YouTube  /  slide deck       │ │  │  └────────────────────────────┘  │
+│  │ │                                │ │  │  ◀  ▮▮  ▶     step 3 of 7        │
+│  │ │                          [⛶]   │ │  │  ─────────────────────────────   │
+│  │ └────────────────────────────────┘ │  │  chunk size   [═══════|───]      │
+│  │  chapters · 1.25× · A–B loop       │  │  overlap      [═══|───────]      │
+│  └────────────────────────────────────┘  │  ─────────────────────────────   │
+│  ┌────────────────────────────────────┐  │  Headings keep the section       │
+│  │ Notes  Outline  Transcript          │  │  title attached to every chunk,  │
+│  │ Ask Amprat  Check  Docs             │  │  so the search still knows       │
+│  │                                     │  │  where the text came from.       │
+│  │  (system-written notes, plain       │  │                                  │
+│  │   language, scrolls with the video) │  │                                  │
+│  └────────────────────────────────────┘  │                                  │
+├──────────────────────────────────────────┴──────────────────────────────────┤
+│  ← previous        [ mark complete ]        next →          🖨 print page    │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Why notes appear in two places** (you asked for both, and they serve different jobs):
-- **Left rail = curated notes.** The canonical written explanation of this topic — read while the video plays, scannable, permanent. Authored in MDX by you (or drafted by the AI tutor from the transcript, then edited by you — *the act of editing is the learning*).
-- **Below the video = your notes + transcript + AI + quiz.** Active workspace. Tabbed because you only need one at a time.
+**Space controls, because 13.6" is tight:**
+- `[⛶]` on the player → **fullscreen video or slides**
+- `[⛶]` on the animation → **fullscreen animation**
+- `[→|]` → collapse the animation pane; the stage expands to full width
+- `[focus ⛶]` → hide all chrome; just the player and the notes
+- `⇄` (keyboard `s`) → swap panes, putting the animation in the big pane
+- Below 1100px the panes stack: player, then tabs, then animation
 
-### 4.2 Player behaviour
-- **YouTube** via the IFrame API with `start`/`end` so a "topic" can be a 9-minute slice of a 50-minute video. Curation at the segment level is what makes the path feel authored rather than aggregated.
-- **Slides** when YouTube isn't the best source (see `08-RESOURCES.md` for the decision rule). A slide deck is an MDX file: markdown + inline SVG + embedded live React components + an optional narration track. Slides are **not** a downgrade — for MCP, prompt engineering, evals and system design they're better than any existing video.
-- Chapters generated from the topic outline; clicking an outline item seeks.
-- **A–B loop** for re-watching a 40-second explanation until it lands.
-- Transcript with search + click-to-seek; Hindi↔English (the reference video is Hinglish — store both, search both).
-- Speed memory per source; resume position per topic.
+### 4.2 The player
+- **1–3 curated YouTube segments per topic**, plus an optional slide deck, shown as a source switcher with a one-line label on each ("more visual", "goes deeper", "Hindi"). Progress tracks the *topic*, so any source completes it.
+- Every source is a **segment** with start/end times — a topic can be nine minutes of a fifty-minute video.
+- Chapters generated from the topic outline; clicking seeks.
+- **A–B loop** for replaying a forty-second explanation until it lands.
+- Speed remembered; position remembered per topic, per device.
+- Slide decks: keyboard navigation, fullscreen, printable, with live React components and inline animations embedded in slides.
+- If a video dies, AmpratAI detects it and promotes the deck to main until it's replaced.
 
-### 4.3 Notes system
-- Markdown + code blocks, stored as files in `content/notes/<topic-id>.md`, **git-synced**. Postgres holds only metadata and anchors.
-- `Ctrl/Cmd+N` → creates a note anchored to the current video timestamp (or slide number). Clicking the anchor later seeks back.
-- "Capture frame" → screenshots the current video frame or animation state into the note.
-- Every note can be promoted to a **flashcard** with one key; the tutor can draft the card's front/back from the note.
-- Weekly export: all notes → one markdown digest → the seed of your public post.
+### 4.3 Notes — system-written, and quiet
+You take notes in a physical notebook. AmpratAI respects that completely:
 
-### 4.4 Ask Forge (the AI tutor) — and why it's on the critical path
-A chat pane scoped to *your* context: this topic's transcript + curated notes + your own
-notes + the primary docs + your code from related projects. Modes:
-- **Explain** — "re-explain this with a MERN analogy" (it knows your background)
-- **Socratic** — it asks *you* questions and grades your answers, instead of answering
-- **Gap check** — generates 5 questions from this topic; scores you; writes the weak ones back into your flashcard deck
+- **No note-taking UI at all.** No "add note" button, no highlighting tools, no editor. Nothing to manage.
+- The **Notes tab** holds a written explanation of the topic in plain language — written by AmpratAI, scrolling alongside the video. It's the textbook version, there to read, not to maintain.
+- **🖨 Print page** gives you a clean one-page summary of the topic — the key points, the diagram, the terms — formatted for A4. Print it, stick it in your notebook, write on it.
+- Flashcards for spaced repetition are generated automatically from the topic, not from anything you have to write. Reviewing them is optional; they appear on the home screen when due and are easy to ignore.
+
+### 4.4 The other tabs
+- **Outline** — the topic's structure; clicking a line seeks the video
+- **Transcript** — searchable, click to seek, Hindi and English where both exist
+- **Ask Amprat** — §5
+- **Check** — five quick questions. Self-assessment. Nothing locks.
+- **Docs** — the 1–3 primary links, plus this topic's glossary terms
+
+### 4.5 When is a topic "complete"?
+You press the button. That's it.
+
+AmpratAI shows soft signals — what you've watched, whether the check went well, whether the
+drills passed — but it never blocks you. If you already know a topic, mark it and move on.
+
+## 5. Amprat Assistant
+
+The built-in tutor. It knows the whole curriculum, the transcripts, the primary docs, your
+progress, and (once you submit projects) your own code.
+
+**Modes:**
+- **Explain** — "say that again, simpler" or "explain it using React"
+- **Socratic** — it asks *you* questions instead of answering, and tells you where your answer was vague
+- **Gap check** — five questions from this topic, scored, with the weak areas fed into your flashcards
 - **Analogy bridge** — "this is like Express middleware, except…"
+- **Code conversation** — after you submit a project, it asks you about your own code in plain language. Not a test. A conversation that surfaces where your understanding is thin, which is the main safeguard when AI wrote most of the lines.
 
-This is not a bonus feature. **It is your Month 3 RAG mini-project and your Month 5 eval
-project, dogfooded** — a hybrid-retrieval system over a messy real corpus (transcripts,
-docs, notes) with citations and an eval set. Build it when you reach Month 3, not before.
+Technically it's a retrieval system over the curriculum, transcripts, docs and your
+submissions, with citations back to the exact source. Built by Claude, running on the
+platform's own backend.
 
-### 4.5 Completion criteria for a CONCEPTS checkpoint
-Not "video watched". All of:
-- ≥ 80% of the segment actually played (no scrub-skipping)
-- ≥ 1 note written (enforced gently — the button is disabled with a tooltip)
-- The auto-generated 5-question check passed at ≥ 80%
-- The primary-doc link marked as read
+## 6. Practice
 
-## 5. `PRACTICE` checkpoint — real tools, real code
+Five modes, weighted towards understanding over typing (`04-CURRICULUM-MAP.md` §3):
 
-Four practice modes. Each topic uses whichever fit; most use two.
+1. **Core primitive** (~5%) — hand-write one small thing, no AI. About ten across the whole path.
+2. **Read & predict** (~25%) — working code; what does it output, what breaks, where's the bug.
+3. **Spec-then-verify** (~25%) — you write the spec, AI writes the code, you review it against the spec and find what it got wrong.
+4. **Tool drill** (~30%) — use the real tool, verified for real: AmpratAI calls the Langfuse API to confirm your traces exist, fetches your published package from PyPI and calls `tools/list` on it, pings your deployed URL, checks your GitHub Action's conclusion.
+5. **Decision drill** (~15%) — no code. "Pick a strategy and defend it." "Get this from ₹4 a request to ₹1." Scored against a rubric.
 
-### 5.1 Code Lab (in-browser drills)
-- Monaco editor, Python, split view with output.
-- **Runtime tiering:** pure-Python/stdlib drills → **Pyodide** in a web worker (instant, free, offline). Anything needing real packages, network or a DB → **remote sandbox** (Docker container per run via a job queue; or E2B/Modal if you'd rather not run infra).
-- Graded by hidden `pytest` cases. Visible tests teach; hidden tests verify.
-- Progressive hints (3 levels) with a cost: revealing a hint marks the drill as "assisted" in your stats. Solutions unlock only after a genuine attempt.
-- Example drills: implement cosine similarity; write an async fetcher with a semaphore; write a retry decorator with jitter; implement RRF; implement recursive chunking; write a pydantic model with a custom validator; implement a token-budget packer; write a tool-schema generator from a function signature.
-
-### 5.2 Tool Drill (guided real-tool tasks, verified)
-The thing no course does: make you use the actual tool and then *check that you did*.
-
-| Drill | Verification |
-|---|---|
-| "Spin up pgvector in Docker, index 1,000 chunks, run a query" | Paste the output; Forge checks shape + a result fingerprint |
-| "Instrument this endpoint with Langfuse, make 5 traced calls" | Forge calls the Langfuse API with your read key and confirms ≥5 traces exist |
-| "Create a Qdrant collection with a payload filter" | Qdrant API check via your endpoint + key |
-| "Publish your MCP server; install it in Claude Code" | Forge fetches the package from PyPI/npm and runs its tool list |
-| "Deploy this container; return a public URL" | Forge pings the URL and asserts the health payload |
-| "Open a PR that fails your own eval gate" | GitHub API: check the run conclusion is `failure` on that PR |
-
-Verification is what turns a task into a checkpoint. Keys are stored server-side,
-encrypted, never in the browser.
-
-### 5.3 Prompt Arena (the feature that would make Forge genuinely novel)
-For every prompting topic: you write a system prompt; Forge runs it against **N hidden
-test cases**, scores it with assertions + an LLM judge, and shows you a leaderboard of your
-own attempts with **cost and latency alongside quality**.
+**Prompt Arena** (for the prompting topics): you write a system prompt, AmpratAI runs it
+against hidden test cases, and shows quality *and* cost *and* latency side by side across
+your attempts:
 
 ```
-Attempt   Quality  Faithful  Format-valid  Avg tokens   ₹/call   p95
-v1  0.54     0.61      72%           1,240        0.42     2.1s
-v2  0.71     0.80      100%          1,480        0.51     2.4s
-v3  0.88     0.91      100%            920        0.31     1.7s   ← better AND cheaper
+Attempt   Quality  Grounded  Format OK   Avg tokens   ₹/call   p95
+v1  0.54     0.61      72%         1,240        0.42     2.1s
+v2  0.71     0.80      100%        1,480        0.51     2.4s
+v3  0.88     0.91      100%          920        0.31     1.7s   ← better AND cheaper
 ```
 
-This teaches the single hardest thing about production prompting — that quality, cost and
-latency are one joint optimisation — and it teaches it in the only way that works:
-by making you feel the tradeoff. It's also a ready-made Month 5 eval project.
+That third row is the whole lesson: quality, cost and latency are one joint problem. Nothing
+teaches it except feeling it.
 
-### 5.4 Debug Challenge (break-then-fix, pre-broken)
-A small repo with a deliberately planted bug; you find and fix it; hidden tests confirm.
-Planted-bug library, all drawn from real-world mistakes:
-unnormalised embeddings · zero chunk overlap splitting sentences mid-fact · a tool schema
-whose description lies about units · missing `await` so the whole endpoint blocks ·
-retry-without-jitter causing a thundering herd · `tenant_id` filter missing from the
-retrieval query · history never compacted → context overflow at turn 12 · judge prompt
-that rewards verbosity · `max_tokens` too low so JSON truncates mid-object · cache key
-missing the prompt version so v2 serves v1's answers.
+**Debug challenges** — a small repo with a planted bug, drawn from real mistakes:
+unnormalised embeddings · zero chunk overlap cutting facts in half · a tool description that
+lies about units · a missing `await` blocking the whole endpoint · retries without jitter ·
+**a missing tenant filter** · history never compacted, overflowing at turn 12 · a judge
+prompt that rewards length · `max_tokens` too low, truncating JSON · a cache key missing the
+prompt version. These ten bugs teach more than ten tutorials, and they're what senior
+interviews actually probe.
 
-**These ten bugs are more educational than ten tutorials.** They are also the actual
-content of senior interviews.
+Running code: small drills run in the browser (Pyodide); anything needing real packages,
+network or a database runs in a sandboxed container. A spend cap applies to anything that
+calls a real model, and the cost is always shown.
 
-### 5.5 Practice completion criteria
-- All required drills pass hidden tests
-- Tool drills verified via API
-- Prompt arena: beat the stated quality threshold **and** stay under the cost ceiling
-- Assisted-vs-unassisted ratio recorded (not punished, but visible)
+## 7. Mini-projects
 
-## 6. `MINI-PROJECT` checkpoint — real problems, animated, built locally
+Each brief is a work ticket, not an exercise: context, problem, constraints, non-goals,
+acceptance criteria, rubric. Full set in `07-PROJECT-BRIEFS.md`.
 
-### 6.1 The brief (a work ticket, not a tutorial)
-Each mini-project is presented exactly as a real task would be:
+Because you build with AI assistance, the briefs aim high — real systems with real
+constraints, not toy apps.
 
+**The animated scenario.** Before you write anything, a 60–90 second animation shows the
+problem in the world: the person who has it, what they need, your architecture assembling
+piece by piece with data flowing through it, and the payoff with real numbers. Same engine
+as the concept animations, longer scene list.
+
+**Building it.** A starter repo scaffolds locally (`ampratai start p-3.1`) with the brief, a
+test suite, an eval harness and a README stub. You build in your own IDE, with AI. Then
+`ampratai verify` runs the acceptance tests and eval thresholds locally, and `ampratai submit`
+sends the results and your URLs — never your code.
+
+**How it's judged:**
+1. Acceptance tests pass
+2. Eval thresholds met, where quality is the point
+3. A **code conversation** with Amprat Assistant about your own repo — the safeguard that makes AI-assisted building work
+4. A reachable deployed URL — AmpratAI pings it
+
+No rubric score is shown as a grade. You get specific feedback and a list of what's not
+demonstrated yet.
+
+## 8. Progress, devices, and stopping
+
+### Everything is saved server-side
+Progress, positions, check results, flashcard state, submissions and spend all live in the
+database, not the browser. Open it on your laptop, your phone, a lab machine — same state.
+
+### Stopping is designed for, not tolerated
+No streaks. No "you haven't studied in 9 days". No decay. No deadlines. No time boxes.
+Nothing expires.
+
+When you come back after exams:
+- The home screen opens on exactly where you stopped
+- A **"where you left off"** card: what you'd just learned, what you were building, and a two-minute refresher of the last three concepts
+- Flashcards due are capped at a small number so returning doesn't feel like a backlog
+- A one-screen recap of the current stage, if you want the wider context
+
+Coming back after four weeks away should cost one session, not one week.
+
+### What the home screen shows
+Where you are. What's next. Anything you left half-built. Total spend. That's it — no
+dashboards of hours watched, because hours watched isn't the point.
+
+## 9. Design system
+
+### Colours
+
+**Light** — white base, beige surfaces, olive accents:
+```css
+--bg:            #FFFFFF;   /* page */
+--surface:       #F7F3E9;   /* cards, panels — beige */
+--surface-2:     #EFE8D8;   /* nested surfaces, tab bars */
+--border:        #DED5C0;
+--text:          #23261F;
+--text-muted:    #5E6356;
+--accent:        #55663B;   /* deep olive — links, buttons, active states */
+--accent-hover:  #44522F;
+--accent-soft:   #8FA86A;   /* fills, charts, large UI only — not small text */
+--accent-wash:   #E8EEDB;   /* selected rows, highlights */
 ```
-CONTEXT      Who has the problem, in one paragraph of real-world setting
-PROBLEM      What's broken/needed, stated as the stakeholder would state it
-CONSTRAINTS  Latency budget · cost ceiling · data volume · privacy rules
-NON-GOALS    Explicitly what not to build (kills scope creep)
-ACCEPTANCE   Checkable criteria, tests you must pass
-RUBRIC       How it's graded (correctness, reliability, cost, code quality, UX, docs)
-STRETCH      Optional extensions
-TIME BOX     Expected hours; a hard "stop and ship" line
+
+**Dark** — near-black with a blue cast, beige text, lighter olive accents:
+```css
+--bg:            #12151A;   /* page — black/grey/blue */
+--surface:       #1A1F26;
+--surface-2:     #232A33;
+--border:        #2E3742;
+--text:          #EDE3CF;   /* beige */
+--text-muted:    #A79F8C;
+--accent:        #9DB87A;   /* light olive */
+--accent-hover:  #B0C98D;
+--accent-soft:   #6E8450;
+--info:          #6E93B8;   /* the blue accent */
+--accent-wash:   #1E2A1C;
 ```
 
-Full set of briefs: `07-PROJECT-BRIEFS.md`. Rule: **every brief must be a problem a real
-person would pay to have solved.** No "build a todo app with AI".
+Contrast is checked: olive on white is 6.3:1, olive on beige 5.7:1, beige on near-black
+14.5:1 — all comfortably past WCAG AA, including for long reading sessions.
 
-### 6.2 The animated scenario (your "real life applications in animation format")
-Before you write code, a **60–90 second animation** shows the problem in the world:
+### The rest
+- Type: one humanist sans for UI and prose, one mono for code. Generous line height — this is a reading app.
+- Density: roomy. Whitespace is the main defence against a crowded 13.6" screen.
+- Motion: purposeful only, and it respects `prefers-reduced-motion`.
+- Dark mode follows the system by default, with a manual override that persists.
+- Animations use the same palette, with olive for the "active path" and the beige/blue neutrals for everything at rest.
 
-1. **The pain** — a person hits the problem (support agent drowning in tickets; a student searching 400 pages of regulations; a recruiter with 900 resumes)
-2. **The ask** — what they actually need to happen
-3. **The system** — your architecture appearing piece by piece, with data flowing through it, labelled with the concepts you just learned
-4. **The payoff** — the same scene, solved, with the numbers (time saved, ₹ saved, accuracy)
+## 10. Animations
 
-Same `AnimationSpec` engine as the concept animations (§7), just a longer scene list with
-optional narration. This is what makes a mini-project feel like *work with a purpose*
-instead of an exercise — and it is the part of your idea I'd protect hardest, because it's
-what no existing platform has.
+Hand-animating 215 topics would take a year, so this is a system, not a collection.
 
-### 6.3 Local build flow (the platform gets out of the way)
-```bash
-npx forge start mp-3.1          # scaffolds the starter repo locally
-#   → README with the brief, tests/, evals/, docker-compose.yml, .env.example, TODOs
-cd mp-3.1 && forge verify       # runs acceptance tests + eval thresholds locally
-forge submit                    # pushes results + repo URL + demo URL to Forge
-```
-- `forge` CLI is a thin Python/Node tool with a signed device token. It never uploads your code — only test results, metrics and the URLs.
-- Starter repos are GitHub template repos. Real git, real branches, real PRs, your own IDE.
+### Four production tiers
+| Tier | What | Use for |
+|---|---|---|
+| **T1 Diagram-morph** | Declarative JSON scenes → animated SVG. Nodes, edges, highlights, captions, step-through | ~60% of topics — pipelines, request flows, architectures |
+| **T2 Explorable** | A React component with knobs; change a value, watch the outcome change | ~25% — anything with a tradeoff dial |
+| **T3 Narrated film** | Rendered video for spatial intuition | ~5% — embeddings space, attention, vector search |
+| **T4 Live data** | Driven by a real trace from your own projects | ~10% — debugging, observability, system design |
 
-### 6.4 Grading (four layers)
-1. **Acceptance tests** — deterministic, must pass
-2. **Eval thresholds** — where quality is the point (recall@5 ≥ 0.8, faithfulness ≥ 0.85)
-3. **AI code review against the rubric** — structured feedback, not a score theatre; cites specific lines
-4. **Self-review + reflection** — 200 words: what broke, what you'd do differently, what you still don't understand. *The reflection is mandatory and is the highest-retention part of the whole system.*
-
-Plus a hard requirement: **a reachable deployed URL.** Forge pings it. Undeployed = incomplete.
-
-### 6.5 Trace-to-teaching loop (the compounding feature)
-Once your projects emit Langfuse traces, Forge can pull a **real trace from your own
-system** and render it as an animation: your actual request flowing through your actual
-architecture, with your real latencies and costs on each hop. You debug by *watching your
-own system move*. No other platform can do this because no other platform has your traces.
-Build in Phase 5; it's the thing that turns Forge from "an LMS" into something worth
-showing people.
-
-## 7. The animation system
-
-The riskiest part of your idea — hand-animating ~224 topics would take a year. So it needs
-to be a **system**, not a collection.
-
-### 7.1 Four production tiers (author in the cheapest tier that works)
-
-| Tier | What | Cost to author | Use for |
-|---|---|---|---|
-| **T1 Diagram-morph** | Declarative JSON scenes → animated SVG (Framer Motion / GSAP). Nodes, edges, highlights, captions, step-through | ~30–60 min | ~60% of topics. Pipelines, request flows, architectures |
-| **T2 Explorable** | Custom React component with knobs; you change a parameter and watch the outcome change | ~3–6 h | ~25%. Anything with a tradeoff dial |
-| **T3 Narrated film** | Motion Canvas / Manim rendered to MP4 | ~1 day | ~5%. Embeddings space, attention, vector search intuition |
-| **T4 Live data** | Animation driven by a real trace or real dataset from your own projects | ~2–4 h, reusable | ~10%. Debugging, observability, system design |
-
-### 7.2 `AnimationSpec` — one DSL so T1 is fast to author
+### One JSON format so T1 is fast to produce
 ```jsonc
 {
   "id": "rag-pipeline-overview",
-  "topicId": "m3.1-anatomy",
-  "tier": "T1",
+  "topicId": "s3.1.t1",
   "nodes": [
-    { "id": "docs",  "label": "500-page PDF",   "shape": "doc",   "at": [40, 120] },
-    { "id": "chunk", "label": "Chunker",        "shape": "proc",  "at": [180, 120] },
-    { "id": "embed", "label": "Embedding model","shape": "proc",  "at": [320, 120] },
-    { "id": "store", "label": "pgvector",       "shape": "db",    "at": [460, 120] },
-    { "id": "llm",   "label": "Claude",         "shape": "model", "at": [460, 260] }
+    { "id": "docs",  "label": "500-page PDF",    "shape": "doc",   "at": [40, 120] },
+    { "id": "chunk", "label": "Chunker",         "shape": "proc",  "at": [180, 120] },
+    { "id": "embed", "label": "Embedding model", "shape": "proc",  "at": [320, 120] },
+    { "id": "store", "label": "pgvector",        "shape": "db",    "at": [460, 120] }
   ],
   "edges": [
-    { "from": "docs", "to": "chunk", "payload": "text" },
+    { "from": "docs",  "to": "chunk", "payload": "text" },
     { "from": "chunk", "to": "embed", "payload": "chunk[]" },
     { "from": "embed", "to": "store", "payload": "vector[1536]" }
   ],
   "scenes": [
-    { "id": "s1", "caption": "A 500-page document can't fit in a prompt.",
+    { "caption": "A 500-page document won't fit in one prompt.",
       "focus": ["docs"], "annotate": [{ "on": "docs", "text": "~250k tokens" }] },
-    { "id": "s2", "caption": "So we split it into chunks — overlapping, so facts aren't cut in half.",
-      "animate": [{ "edge": "docs->chunk", "flow": 1.2 }], "focus": ["chunk"] },
-    { "id": "s3", "caption": "Each chunk becomes a vector: meaning as coordinates.",
-      "animate": [{ "edge": "chunk->embed", "flow": 1.0 }],
-      "sideView": "vector-space-2d" }
+    { "caption": "So we cut it into chunks — overlapping, so facts don't get split.",
+      "animate": [{ "edge": "docs->chunk", "flow": 1.2 }] },
+    { "caption": "Each chunk becomes a vector: its meaning, as coordinates.",
+      "animate": [{ "edge": "chunk->embed", "flow": 1.0 }], "sideView": "vector-space-2d" }
   ],
   "knobs": [
-    { "id": "chunkSize", "label": "Chunk size", "min": 128, "max": 2048, "default": 512,
-      "affects": "chunkCount" }
+    { "id": "chunkSize", "label": "Chunk size", "min": 128, "max": 2048, "default": 512 }
   ]
 }
 ```
-Authoring a T1 animation becomes writing ~40 lines of JSON. That's what makes 180 topics
-feasible.
 
-### 7.3 Non-negotiable animation rules
-1. **Mechanism only.** Every animation answers "what moves, in what order, and what changes it?" No decorative motion.
-2. **Always steppable.** Arrow keys step scenes. Learning happens at your pace, not the animation's.
-3. **One caption per scene, one idea per caption.** If a caption needs two sentences, it's two scenes.
-4. **Real numbers on screen.** "~250k tokens", "1536 dims", "₹0.31/call" — not "many tokens".
-5. **Works in light and dark, and at phone width.**
-6. **Reduced-motion fallback** = a static labelled diagram with the captions as a list. Accessibility, and also a better screenshot for your blog posts.
-7. **Reuse over novelty.** A new animation must justify why an existing one can't be parameterised.
+### Rules
+1. **Mechanism only.** What moves, in what order, and what changes it.
+2. **Always steppable.** Arrow keys. Your pace, not the animation's.
+3. **One caption, one idea**, in plain language. Two sentences means two scenes.
+4. **Real numbers on screen** — "~250k tokens", "₹0.31 per call" — never "many".
+5. **Fullscreen available**, and readable in both themes.
+6. **Reduced-motion fallback** is a labelled static diagram with the captions as a list.
 
-Concrete per-concept animation catalogue: **`06-ANIMATION-CATALOG.md`** (~45 specified).
+Full catalogue with the "aha" for each: `06-ANIMATION-CATALOG.md`.
 
-## 8. Anti-tutorial-hell mechanics (the forcing functions)
+## 11. Architecture
 
-These are features, not vibes. They're what make Forge beat Coursera/Udemy/YouTube for
-*your* purpose.
-
-1. **Gates.** Month N+1 is locked until Month N's gate passes. Override exists but is logged and shown on your dashboard as "gates skipped: 1". Visible shame, honestly earned.
-2. **One resource per concept.** Alternates hidden behind "still confused?", which logs how often you need it (signal that your curated note needs improving).
-3. **Evidence-based completion.** No "mark as done" without tests/URL/artifact.
-4. **Spaced repetition (FSRS).** Flashcards from your own notes. 10 minutes daily. Month 1's Python decorators resurface in Month 4 when you're writing tool wrappers.
-5. **Ship counter, front and centre.** The dashboard's biggest number is **projects deployed**, not hours watched. Hours watched is deliberately in small grey text.
-6. **Weekly public commitment.** Friday: Forge drafts your week's post from your notes and shipped diffs; you edit and publish. Unpublished weeks show as a broken streak.
-7. **Break-it drills.** Every module has a required "break it" task. Building teaches the happy path; breaking teaches the system.
-8. **Time-boxing with a stop signal.** Each checkpoint has an expected duration. At 2× expected, Forge interrupts: "you're 2× over on this topic — ship what you have, note the gap, move on." Perfectionism is the other failure mode, and nothing on the internet protects against it.
-9. **Cost meter everywhere.** Every practice run shows ₹ spent. You build the cost instinct that interviews test, just by using the platform.
-10. **Monthly retro, auto-drafted.** Hours vs plan, gates, drills assisted vs solo, weakest module by quiz scores, and "things I was wrong about".
-
-## 9. Build phases — and the rule that stops this becoming a procrastination project
-
-> **THE RULE:** Platform work is capped at **15% of weekly hours (≈4.5 h/week)**, starts in
-> **Month 2, not Month 1**, and **every phase must be a required roadmap mini-project or a
-> direct extension of one.** If a phase isn't on the roadmap, it waits until Month 7.
-
-| Phase | When | Build | Doubles as |
-|---|---|---|---|
-| **0** | Month 1, one weekend, ≤6 h | `curriculum.yaml` + a markdown checklist in this repo + Obsidian for notes. **No app.** Start learning immediately. | Nothing. It's a text file. That's the point. |
-| **1** | Month 2, wk 8 | Next.js shell; content from MDX/YAML; three-pane concept page; YouTube player; notes to localStorage; deployed to Vercel | Uses skills you already have — cheap |
-| **2** | Month 3, wk 12 | Postgres progress + timestamp-anchored notes + FSRS flashcards; animation library v1 (8 T1 animations + 2 T2) | Postgres/SQLAlchemy practice from M1.6 |
-| **3** | Month 4, wk 16 | FastAPI service: **Ask Forge tutor** (hybrid RAG over transcripts + docs + your notes, with citations) + auto-quiz generation | **This *is* MP-3.1's sibling** — the RAG project with a real corpus and real users (you) |
-| **4** | Month 5, wk 20 | Code Lab sandbox runner + `forge` CLI + eval-based grading + **Prompt Arena** + Langfuse tracing on Forge itself | **This *is* MP-5.x** — queues, workers, sandboxing, evals, observability |
-| **5** | Month 6–7 | Trace-to-teaching animations, polish, make it public, write the build-in-public series | Flagship portfolio project #3 + possible product |
-
-**Honest warning.** Phase 3 and 4 are each a genuine 2–3 week project if done well. They fit
-*only* because they replace roadmap projects rather than adding to them. The moment you
-find yourself picking a component library at 1am in Month 2, you have lost — close it and
-go write a chunking experiment.
-
-The Phase 0 text file is not a placeholder to be embarrassed about. **It is sufficient for
-Month 1.** Ship the app when the app is the lesson.
-
-## 10. Technical architecture
-
-### 10.1 Stack (chosen to be 60% skills you have, 40% skills you need)
-
+### Stack
 | Layer | Choice | Why |
 |---|---|---|
-| Frontend | **Next.js 15 (App Router) + TypeScript** | Your strongest ground. Ship fast. |
-| Styling | Tailwind + shadcn/ui | No design-system bikeshedding |
-| Animation | **Framer Motion** (T1/T2) + **Motion Canvas** (T3 renders) | SVG-native, declarative, plays well with the `AnimationSpec` DSL |
-| Editor | Monaco | Familiar keybindings |
-| Content | **MDX + YAML in `content/`, validated by Zod at build** | Content-as-code: git-versioned, PR-able, diffable, no CMS. Correct choice for a solo learner. |
-| Charts | Recharts | Progress, eval scores, cost |
-| Client state | Zustand + TanStack Query | Boring, correct |
-| **AI backend** | **FastAPI (Python)** | **Deliberate:** every AI feature is written in the language you're learning. The platform is Python practice. |
-| Orchestration | LangGraph (tutor agent), Langfuse (tracing) | Same tools as the roadmap |
-| DB | **Postgres + pgvector** (Neon or Supabase) | One DB for progress, notes metadata, and embeddings |
-| Cache/queue | Redis + Arq | Ingestion, eval runs, sandbox jobs |
-| Sandbox | Pyodide (browser) + Docker runner (or E2B/Modal) | Tiered by need |
-| Auth | GitHub OAuth, single user | You have the repos anyway; zero friction |
-| Hosting | Vercel (web) + Fly.io/Railway (FastAPI + worker) + Neon (DB) → AWS in Month 5 | Migrating it to ECS/Cloud Run *is* a Month 5 exercise |
-| Notes durability | Markdown files committed to a `forge-notes` repo | Your notes outlive the platform |
+| Web app | Next.js + TypeScript + Tailwind | Fast to build, deploys free on Vercel |
+| Animation | Framer Motion (T1/T2), rendered video (T3) | SVG-native, fits the JSON format |
+| **Database** | **MongoDB Atlas (free tier)** | Holds content *and* progress. Document-shaped data — slides, animation specs, video links, notes — fits naturally. Free, hosted, cross-device. |
+| Vector search | MongoDB Atlas Vector Search | Powers Amprat Assistant without a second database |
+| AI backend | FastAPI (Python) | Tutor, prompt arena, grading, eval runs |
+| Assets | Object storage (R2 / Vercel Blob free tier) | Images, rendered animations, deck assets — paths stored in Mongo |
+| Sandbox | Pyodide in-browser; container runner for real drills | Tiered by what the drill needs |
+| Auth | GitHub sign-in, single user | You already have the account; enables cross-device |
+| Hosting | Vercel (web) + Fly/Railway (API) + Atlas (DB) | All free or near-free at this size |
 
-**Deliberate non-choices:** no custom video player (YouTube IFrame API), no CMS, no
-microservices, no Kubernetes (until it's the lesson), no multi-tenancy, no mobile app
-(responsive web only), no payments.
+**Content lives in two places on purpose:** authored source (markdown decks, animation JSON,
+practice definitions) is version-controlled in this repo, and a sync step publishes it to
+MongoDB. Git gives history and review; Mongo gives fast reads and updates without a redeploy.
 
-### 10.2 Data model (Postgres, abbreviated)
+**Not building:** a custom video player, a CMS, microservices, multi-tenancy, payments, or
+a mobile app (the web app is responsive).
 
-```sql
-track(id, slug, title, persona_notes)
-month(id, track_id, idx, title, outcome, hours_est, gate_json)
-module(id, month_id, idx, code, title, priority)          -- priority: core|stretch
-topic(id, module_id, idx, title, tier, est_minutes, prereq_ids[], tags[])
-
-concept_unit(id, topic_id, primary_kind, youtube_id, start_s, end_s,
-             slide_deck_id, curated_notes_path, primary_doc_urls[], analogy_md)
-slide_deck(id, title, slides_path)                         -- MDX
-animation(id, topic_id, tier, spec_json, asset_url, alt_static_url, caption_list[])
-
-practice_item(id, topic_id, kind, prompt_md, starter_code, visible_tests,
-              hidden_tests, hints[], solution, runtime, verify_json, cost_ceiling)
-mini_project(id, month_id, code, brief_md, scenario_animation_id, template_repo,
-             acceptance_json, rubric_json, eval_thresholds_json, time_box_h)
-
-progress(id, checkpoint_type, checkpoint_id, status, seconds_spent, attempts,
-         assisted, score, completed_at)                    -- status: locked|open|done
-note(id, topic_id, anchor_kind, anchor_value, body_path, tags[], created_at)
-flashcard(id, note_id, topic_id, front, back, fsrs_state_json, due_at)
-artifact(id, checkpoint_id, kind, repo_url, demo_url, metrics_json, verified_at)
-daily_log(day, hours_json, dsa_count, spend_inr, note)
-weekly_review(week, shipped[], published_url, wrong_about, next_week_focus)
-trace_sample(id, topic_id, source, trace_json)             -- real traces as teaching material
+### Data model (abbreviated)
+```
+stages        { idx, title, outcome, modules[] }
+modules       { stageId, code, title, priority, tier }
+topics        { moduleId, idx, title, estMinutes, prereqs[] }
+concepts      { topicId, sources[{kind,youtubeId,start,end,label,reason}|{deckId}],
+                notesMd, analogyMd, animationIds[], docUrls[], glossary[], printableMd }
+decks         { id, title, slides[{md, componentRef, animationId}] }
+animations    { id, topicId, tier, specJson, assetUrl, staticFallbackUrl }
+practice      { topicId, mode, promptMd, starter, visibleTests, hiddenTests,
+                hints[], runtime, verify, costCeiling }
+projects      { id, stageId, briefMd, scenarioAnimationId, templateRepo,
+                acceptance, evalThresholds }
+progress      { checkpointId, status, lastPositionSec, checkScore, updatedAt }
+flashcards    { topicId, front, back, fsrsState, dueAt }
+submissions   { projectId, repoUrl, demoUrl, metrics, conversationNotes, verifiedAt }
+spend         { day, feature, inr }
 ```
 
-### 10.3 Content authoring flow
-```
-content/
-  curriculum.yaml              # months → modules → topics → checkpoint refs
-  concepts/m3.4-structure-aware.mdx
-  slides/mcp-architecture/{01..14}.mdx
-  animations/rag-pipeline-overview.json
-  practice/m3.4/{drill-01.py, tests_visible.py, tests_hidden.py, meta.yaml}
-  projects/mp-3.1/{brief.md, acceptance.yaml, rubric.yaml}
-  notes/                       # your notes; git-synced, portable
-```
-Zod schemas validate every file at build time; CI fails on a broken reference. Adding a
-topic is a PR. This is the right amount of process for one person.
+## 12. Build order
 
-## 11. What makes this better than what exists
+Claude builds this. Content stays a stage ahead of where you are, so nothing is written
+long before you need it and stale by the time you arrive.
 
-Honest comparison, because "best of all the stuff on the internet" needs a definition.
+| Phase | What ships |
+|---|---|
+| **1** | The app: two-pane concept screen, source switcher, fullscreen, system notes, print view, tabs, MongoDB progress, GitHub sign-in, light/dark theme. **Plus all of Stage 1's content** — topics, decks, 6 animations, practice items, 2 project briefs. This is what you start on. |
+| **2** | Stage 2 content · Amprat Assistant (explain, Socratic, gap check) · flashcards · the first interactive animations |
+| **3** | Stage 3 content · Prompt Arena · tool drills with live API verification · `ampratai` CLI (`start` / `verify` / `submit`) |
+| **4** | Stage 4 content · code conversations on submitted projects · debug challenges · trace-driven animations |
+| **5** | Stage 5–7 content · remaining animations · polish |
 
-| | YouTube | Coursera/Udemy | Scrimba/DataCamp | Roadmap.sh | **Forge** |
-|---|---|---|---|---|---|
-| Curated single path | ✗ | ~ | ~ | ✓ | ✓ |
-| Segment-level curation | ✗ | ✗ | ✗ | ✗ | ✓ |
-| Concept animations w/ mechanism | ✗ | ✗ | ~ | ✗ | ✓ |
-| Interactive parameter exploration | ✗ | ✗ | ~ | ✗ | ✓ |
-| Real-tool tasks, API-verified | ✗ | ✗ | ✗ | ✗ | ✓ |
-| Prompt arena w/ cost+quality tradeoff | ✗ | ✗ | ✗ | ✗ | ✓ |
-| Pre-broken debug challenges | ✗ | ✗ | ~ | ✗ | ✓ |
-| Projects built in *your* IDE, auto-verified | ✗ | ✗ | ✗ | ✗ | ✓ |
-| Deployment required to complete | ✗ | ✗ | ✗ | ✗ | ✓ |
-| Tutor grounded in *your* notes + code | ✗ | ✗ | ✗ | ✗ | ✓ |
-| Animations from your own production traces | ✗ | ✗ | ✗ | ✗ | ✓ |
-| Gates you can't buy your way past | ✗ | ✗ | ✗ | ✗ | ✓ |
+Phase 1 is the only one that blocks you. After that, content lands ahead of where you are.
 
-The four rows nobody else has — **API-verified tool drills**, the **prompt arena**,
-**deployment-gated completion**, and **trace-driven animations** — are the ones worth
-building. If you only ever build those four plus the three-pane concept page, Forge is
-already better than anything you can buy, for you.
+## 13. Risks
 
-## 12. Risks, stated plainly
+| Risk | Mitigation |
+|---|---|
+| Content goes stale (AI tooling moves fast) | Decks are the main source for fast-moving topics and are updated in place; videos are segments with labelled alternates; broken links are detected automatically |
+| Animation production is slower than hoped | The JSON format keeps T1 cheap; ten animations carry Stages 2–4; a labelled static diagram is an acceptable ship |
+| YouTube videos disappear | Transcripts and written notes are stored; the deck takes over as main source |
+| Free-tier limits (Atlas 512MB) | Text and JSON are tiny; media goes to object storage. Comfortable for years. |
+| You stop for a month | Designed for — §8 |
+| AI writes the code and understanding stays shallow | Code conversations, read-and-predict drills, decision drills, and ten hand-written primitives |
 
-| Risk | Severity | Mitigation |
-|---|---|---|
-| Platform becomes the project; AI skills don't happen | **Critical** | §9 rule: 15% cap, Phase 0 is a text file, every phase is a roadmap project |
-| Animation authoring is slower than estimated | High | T1 JSON DSL; only 8 animations by Month 3; a static diagram is an acceptable ship |
-| YouTube videos die / get privated | Medium | Store transcript + your curated notes locally; the note is the durable asset, the video is the convenience |
-| Sandbox runner is a real infra project | Medium | Pyodide covers most drills; remote sandbox deferred to Phase 4; rent E2B/Modal rather than build |
-| Content authoring burnout (~224 topics) | High | Author only 2 weeks ahead of yourself. Never batch-author. The tutor drafts, you edit. |
-| API costs from practice runs | Low | Cheap models for drills, hard per-checkpoint cost ceilings, mock responses in tests |
-| Over-designing the data model | Medium | The §10.2 schema is already more than Phase 1–2 need. Start with 6 tables. |
+## 14. Done, for version 1
 
-## 13. Definition of done for the platform (v1, end of Month 6)
+- All 7 stages present, every topic with concepts, practice and projects
+- 49 animations, at least 8 interactive
+- Amprat Assistant with citations, and code conversations on submissions
+- Prompt Arena, tool drills with live verification, debug challenges
+- `ampratai` CLI working
+- Cross-device progress, print views, both themes
+- Deployed and stable
 
-- All 7 months, ~224 topics, present with concepts + practice + project checkpoints
-- ≥ 40 animations (≥ 8 interactive T2)
-- ≥ 120 code drills, ≥ 30 API-verified tool drills, ≥ 10 debug challenges
-- Prompt arena live for 6 prompting topics
-- `forge` CLI with `start` / `verify` / `submit`
-- Ask Forge tutor with citations and an eval set scoring ≥ 0.85 faithfulness
-- Gates enforced; FSRS flashcards running; weekly post drafting working
-- Deployed, public, with a build-in-public write-up series
-
-And the only metric that actually matters: **you finished the roadmap and you have the
-offers.** If Forge is beautiful and you didn't, it failed. Judge it on that, harshly.
+And the only measure that actually matters: **you finished the path and you have the
+offers.** If AmpratAI is beautiful and you didn't, it failed.
