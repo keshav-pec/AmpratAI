@@ -50,5 +50,7 @@ learning five frameworks.
 - [x] Roadmap planned
 - [x] Platform specified
 - [x] Curriculum seeded (`content/curriculum.yaml`)
-- [ ] AmpratAI Phase 1 built (shell + Stage 1 content)
+- [x] **AmpratAI built and running** — `npm install && npm run dev`
+- [x] **Stage 1 written** — 38 topics, 7 animations, 13 project briefs
 - [ ] Stage 1 started
+- [ ] Stage 2 content (written as you approach it)
