@@ -91,14 +91,3 @@ in [`docs/00-INDEX.md`](docs/00-INDEX.md).
 
 Start with [`docs/01-PROFILE-AND-GAP-ANALYSIS.md`](docs/01-PROFILE-AND-GAP-ANALYSIS.md) and
 [`docs/02-ROADMAP.md`](docs/02-ROADMAP.md).
-
-## Renaming the repository
-
-This repo is still called `NexHireAI` on GitHub. Rename it in Settings → General →
-Repository name, then:
-
-```bash
-git remote set-url origin https://github.com/keshav-pec/AmpratAI
-```
-
-GitHub redirects the old URL, so nothing breaks in the meantime.
