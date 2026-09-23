@@ -158,6 +158,11 @@ the loop:
 
 The third one is the interesting case — note that it is \`def\`, not \`async def\`. Work out
 what FastAPI does with a plain \`def\` handler before you answer.`,
+        answer: `- **\`/a\` is fine.** It awaits an async database call.
+- **\`/b\` freezes the server.** It is an \`async def\` handler making a blocking \`requests.get\`, so it holds the only event-loop thread for the whole round trip. Under load, every other request waits behind it.
+- **\`/c\` is acceptable, but limited.** It is a plain \`def\`, and FastAPI runs plain handlers in a thread pool, so the event loop is not blocked. The catch is capacity: the pool is a fixed size (about 40 threads by default), so under heavy load requests queue up waiting for a free thread.
+
+So the ranking is **\`/a\` best, \`/c\` tolerable, \`/b\` broken.** The subtle part: \`/b\` *looks* more modern than \`/c\`, and it is worse.`,
       },
       {
         mode: 'primitive',
@@ -168,6 +173,32 @@ time the responses.
 
 The async one serves both in about 3 seconds. The blocking one takes 6. Watching that
 happen once is worth more than reading about it five times.`,
+        answer: `\`\`\`python
+import asyncio, time
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/async")
+async def a():
+    await asyncio.sleep(3)
+    return {"ok": True}
+
+@app.get("/blocking")
+async def b():
+    time.sleep(3)
+    return {"ok": True}
+\`\`\`
+
+\`\`\`bash
+time (curl -s localhost:8000/async & curl -s localhost:8000/async & wait)        # ~3s
+time (curl -s localhost:8000/blocking & curl -s localhost:8000/blocking & wait)  # ~6s
+\`\`\`
+
+Two conditions for the demonstration to work:
+
+- \`/blocking\` must be \`async def\`. A plain \`def\` runs in the thread pool and hides the problem.
+- Run a single uvicorn worker, which is the default.`,
       },
       {
         mode: 'spec',
@@ -180,6 +211,26 @@ Have AI write it. Then check the two things it usually gets wrong:
 - Does one exception cancel everything, or are failures returned alongside successes?
 
 Look up what \`return_exceptions=True\` does in \`gather\` and decide whether you want it.`,
+        answer: `\`\`\`python
+import asyncio, httpx
+
+async def fetch_all(urls: list[str], limit: int = 10) -> list[str | BaseException]:
+    sem = asyncio.Semaphore(limit)
+    async with httpx.AsyncClient(timeout=10) as client:
+        async def one(url: str) -> str:
+            async with sem:
+                r = await client.get(url)
+                r.raise_for_status()
+                return r.text
+        return await asyncio.gather(*(one(u) for u in urls), return_exceptions=True)
+\`\`\`
+
+Your two checks:
+
+- **Order.** \`gather\` returns results in *input* order, whatever order they finish in. AI versions that use \`as_completed\` give completion order and silently scramble which result belongs to which URL.
+- **Failures.** Without \`return_exceptions=True\`, the first failure raises and you lose every other result — while the other requests keep running unsupervised. With it, a failure sits in its slot as an exception object.
+
+Also check that it has a timeout, a concurrency limit, and **one** shared client rather than one per URL.`,
       },
       {
         mode: 'break',
@@ -187,6 +238,11 @@ Look up what \`return_exceptions=True\` does in \`gather\` and decide whether yo
         body: `Take a working async endpoint and drop a \`time.sleep(5)\` in the middle. Load it
 with ten concurrent requests and watch the total time. Then swap it for
 \`await asyncio.sleep(5)\` and measure again.`,
+        answer: `With \`time.sleep(5)\` and ten concurrent requests, total time is roughly **50 seconds**. The requests are served one after another, because each one holds the event loop for five seconds.
+
+Swap in \`await asyncio.sleep(5)\` and all ten finish in about **5 seconds**. Each request parks while it waits, and the loop moves on to the next.
+
+That ten-to-one gap is what happens to your API the moment one blocking call slips into an async handler.`,
       },
     ],
   },
@@ -316,6 +372,11 @@ otherwise you keep paying for tokens nobody will ever see.`,
         tg.create_task(ok()); tg.create_task(boom()); tg.create_task(ok())
 
 The middle one is the one people get wrong. What type are the items in the returned list?`,
+        answer: `1. **\`gather(ok(), boom(), ok())\`** — the caller gets \`boom\`'s exception raised at the \`await\`. The two \`ok()\` tasks are **not cancelled**: they carry on running in the background and their results are thrown away.
+2. **With \`return_exceptions=True\`** — nothing is raised. You get back a list like \`[result, BoomError(...), result]\`, and the middle item is an **exception object**, returned rather than raised. Check each item with \`isinstance(r, BaseException)\`.
+3. **\`TaskGroup\`** — when \`boom\` fails, the group cancels the other tasks and then raises an **\`ExceptionGroup\`** that wraps the error.
+
+That last detail matters. A plain \`except BoomError\` will *not* catch it. You need \`except* BoomError\`, or you catch the \`ExceptionGroup\` and look inside.`,
       },
       {
         mode: 'spec',
@@ -326,6 +387,40 @@ detail to retry it later.
 
 Have AI implement it. Then check: is the failed chunk distinguishable from a chunk that
 embedded to an empty vector? Could you retry just that one without redoing the other 499?`,
+        answer: `\`\`\`python
+from dataclasses import dataclass
+
+@dataclass
+class EmbedFailure:
+    chunk_id: str
+    error: str
+
+async def embed_all(chunks, limit=10):
+    sem = asyncio.Semaphore(limit)
+    async def one(c):
+        async with sem:
+            vec = await embed(c.text)
+            if len(vec) != DIMENSIONS:
+                raise ValueError(f"got {len(vec)} dimensions, expected {DIMENSIONS}")
+            return vec
+
+    results = await asyncio.gather(*(one(c) for c in chunks), return_exceptions=True)
+    stored, failed = [], []
+    for c, r in zip(chunks, results):
+        if isinstance(r, BaseException):
+            failed.append(EmbedFailure(c.id, repr(r)))
+        else:
+            stored.append((c.id, r))
+    await save_vectors(stored)
+    await save_failures(failed)      # retry these ids later, alone
+\`\`\`
+
+Your checks:
+
+- **Distinguishable from an empty vector.** A failure is an exception object that gets recorded with its chunk id. The length check turns an empty or wrong-sized vector into a failure too, instead of storing garbage.
+- **Retrying only the failure.** The failures table holds ids, so a retry job re-embeds just those.
+
+Note \`BaseException\`, not \`Exception\`: \`CancelledError\` is a \`BaseException\`, and it can appear in the results too.`,
       },
       {
         mode: 'decision',
@@ -337,6 +432,12 @@ in one line:
 2. Embed 10,000 documents overnight
 3. Call three tools an agent asked for, where the agent cannot proceed without all three
 4. Warm three caches at startup`,
+        answer: `1. **Fan out to three models and show the best** → \`gather(..., return_exceptions=True)\`. One model failing should not throw away the other two answers.
+2. **Embed 10,000 documents overnight** → \`gather(..., return_exceptions=True)\` behind a semaphore. Every item is independent, so record failures and retry them later.
+3. **An agent needs all three tool results** → \`TaskGroup\`. One failure makes the step pointless, so cancel the rest and stop spending.
+4. **Warm three caches at startup** → it depends. Use \`TaskGroup\` if the app cannot serve without them, so it fails fast. Use \`gather(return_exceptions=True)\` if they are best-effort.
+
+The question behind every choice: **is partial success useful?** If yes, gather with exceptions returned. If no, TaskGroup.`,
       },
     ],
   },
@@ -439,6 +540,22 @@ at most \`limit\` running at once, returns results in input order, and returns f
 values rather than losing the batch.
 
 This is one of the ten primitives, and you will genuinely reuse it in Stage 3.`,
+        answer: `\`\`\`python
+import asyncio
+
+async def bounded_map(fn, items, limit):
+    sem = asyncio.Semaphore(limit)
+    async def run(item):
+        async with sem:
+            return await fn(item)
+    return await asyncio.gather(*(run(i) for i in items), return_exceptions=True)
+\`\`\`
+
+- **Input order is preserved**, because \`gather\` returns results in the order it was given.
+- **Failures come back as values**, in their slots.
+- **At most \`limit\` calls run** at any moment.
+
+One limit worth knowing: this creates a coroutine for every item up front. That is fine for thousands. For millions, use a fixed pool of workers pulling from an \`asyncio.Queue\`, so memory stays flat.`,
       },
       {
         mode: 'tool',
@@ -449,6 +566,18 @@ concurrency 2, then 5, 10, 20, 50. Record total time and error count at each.
 Plot it or just read the numbers. Find the point where it stops getting faster and starts
 getting worse. That shape is the lesson, and it is the same shape for every provider you
 will use.`,
+        answer: `The shape you should see:
+
+- **Total time falls** as concurrency rises…
+- **…until you hit the rate limit.** Then 429s appear, and time flattens or *rises* as retries pile up.
+
+Pick the highest setting with close to zero errors, then back off about 20% for headroom. Your limit is shared with anything else using the same key, and it changes when you move to a different tier.
+
+The usual snags:
+
+- **Limits are often per model**, so a number you measured on one model does not carry over.
+- **A tokens-per-minute limit** can bite long before the requests limit, if your requests are large.
+- **A free tier's limit** can be so low that concurrency 2 is already too much. That is real data, not a broken test.`,
       },
       {
         mode: 'decision',
@@ -458,6 +587,18 @@ database. Some requests use all three.
 
 How many semaphores, what limits, and where do they live? Defend it in four sentences. Then
 say what changes when you add a second tenant whose traffic must not starve the first.`,
+        answer: `One semaphore **per external dependency, each with its own limit**:
+
+- One for Anthropic — and if you use several models, often one per model, because providers usually rate-limit per model.
+- One for Voyage, for embeddings.
+- **None for the database.** The connection pool is already a semaphore; adding another just double-limits it.
+
+They live at app level (module scope or \`app.state\`), shared by every request. A semaphore created inside a request limits nothing.
+
+With a second tenant, a single shared semaphore lets tenant A's overnight batch job starve tenant B's live chat. Two fixes, usually both:
+
+- **Per-tenant limits** inside the global provider limit.
+- **Separate lanes**: interactive traffic gets reserved capacity, and batch work gets whatever is left.`,
       },
     ],
   },
@@ -579,6 +720,37 @@ and because when your bill spikes from a retry storm you need to recognise the s
 - logs each retry with the attempt number and the delay
 
 You will reuse this in every stage from here on.`,
+        answer: `\`\`\`python
+import asyncio, random, httpx
+
+RETRY_STATUS = {429, 500, 502, 503, 504}
+
+async def with_retry(send, attempts=4, base=0.5, sleep=asyncio.sleep):
+    for attempt in range(attempts):
+        try:
+            response = await send()
+            response.raise_for_status()
+            return response
+        except httpx.HTTPStatusError as e:
+            last = attempt == attempts - 1
+            if e.response.status_code not in RETRY_STATUS or last:
+                raise
+            retry_after = e.response.headers.get("retry-after", "")
+            delay = float(retry_after) if retry_after.isdigit() \\
+                else base * 2**attempt * random.uniform(0.5, 1.5)
+        except (httpx.ConnectError, httpx.ReadTimeout):
+            if attempt == attempts - 1:
+                raise
+            delay = base * 2**attempt * random.uniform(0.5, 1.5)
+        log.warning("retrying", attempt=attempt + 1, delay=round(delay, 2))
+        await sleep(delay)
+\`\`\`
+
+Three design points:
+
+- **\`send\` is a function that makes the request**, not a request object. Each attempt needs a fresh request.
+- **\`sleep\` is a parameter**, so tests can pass a fake that records delays instead of actually waiting.
+- **\`Retry-After\` can also be a date.** This version falls back to the backoff formula in that case. It is also worth putting a ceiling on any single wait.`,
       },
       {
         mode: 'read',
@@ -595,6 +767,15 @@ You will reuse this in every stage from here on.`,
     except httpx.HTTPStatusError: return await call()
 
 Snippet 1 has three problems, not one. Find all three.`,
+        answer: `**Snippet 1** has three problems:
+
+- It retries **every** exception — including 400s, 401s, and your own \`TypeError\` bugs.
+- The wait is a **fixed** one second: no backoff, no jitter, so a herd of clients stays synchronised.
+- After the fifth failure it drops out of the loop and **returns \`None\`** silently. The error vanishes.
+
+**Snippet 2:** \`timeout=None\` means a hung connection waits forever, holding a worker hostage.
+
+**Snippet 3:** it retries once, immediately, with no delay, and **without checking the status** — so a 400 gets resent. If that retry fails too, the exception escapes anyway. It is all of the downsides of retrying with none of the benefits.`,
       },
       {
         mode: 'tool',
@@ -604,6 +785,11 @@ with 200 concurrent clients that retry with fixed backoff and no jitter. Log arr
 
 Now add jitter and run it again. Compare the two arrival histograms. This is a ten-minute
 exercise that makes the animation permanent.`,
+        answer: `Without jitter, the arrival log shows **tall spikes**. Nearly all 200 clients arrive at about 1s, then together again at about 3s, then again at about 7s — the cumulative backoff steps. If the server comes back up around 3s, the second spike lands right on it.
+
+With jitter, the same retries **smear out** across each window. The peak arrival rate drops sharply, and the server copes.
+
+To make the effect visible, the server has to be load-sensitive. The simplest way: reject any request that arrives while more than N are already in flight. A server that simply fails for 3 seconds and then succeeds regardless will not show the re-kill.`,
       },
     ],
   },
@@ -725,6 +911,19 @@ final done event.
 
 Get the newlines exactly right. A single missing blank line means the browser buffers
 forever and you spend an hour blaming the network.`,
+        answer: `\`\`\`python
+import json
+from collections.abc import AsyncIterator
+
+async def sse(chunks: AsyncIterator[str]) -> AsyncIterator[str]:
+    async for text in chunks:
+        yield f"data: {json.dumps({'text': text})}\\n\\n"
+    yield "data: [DONE]\\n\\n"
+\`\`\`
+
+**Why \`json.dumps\` rather than the raw text:** model output contains newlines. A raw newline inside \`data:\` ends that line early and breaks the frame — in SSE, every line of an event needs its own \`data:\` prefix. JSON encodes the newline as \`\\n\`, so each event stays on one line.
+
+The blank line — the second \`\\n\` — is what tells the browser the event is complete. Without it, the browser just keeps waiting.`,
       },
       {
         mode: 'spec',
@@ -737,6 +936,39 @@ only one line changes.
 
 Then test cancellation: close the page halfway and confirm from the server logs that the
 generator stopped.`,
+        answer: `Server:
+
+\`\`\`python
+@app.get("/count")
+async def count(request: Request):
+    async def gen():
+        for i in range(1, 11):
+            if await request.is_disconnected():
+                log.info("client_gone", at=i)
+                return
+            yield f"data: {json.dumps({'n': i})}\\n\\n"
+            await asyncio.sleep(1)
+        yield "data: [DONE]\\n\\n"
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+\`\`\`
+
+Page:
+
+\`\`\`html
+<pre id="out"></pre>
+<script>
+  const es = new EventSource('/count');
+  es.onmessage = (e) => {
+    if (e.data === '[DONE]') return es.close();
+    document.getElementById('out').textContent += JSON.parse(e.data).n + ' ';
+  };
+</script>
+\`\`\`
+
+The snag most people hit: **\`EventSource\` reconnects automatically** when the server closes the stream. Forget \`es.close()\` on \`[DONE]\` and the count starts over from 1, forever. Real chat interfaces use \`fetch\` with a reader instead, which also allows POST.
+
+Close the tab halfway and you should see \`client_gone\` in the server log.`,
       },
       {
         mode: 'break',
@@ -744,6 +976,11 @@ generator stopped.`,
         body: `Remove the blank line after \`data:\` and watch the browser receive nothing. Put it
 back. Then make the generator raise halfway and observe what the client sees — it is not a
 500, and understanding why is the point.`,
+        answer: `**No blank line after \`data:\`** — the browser never sees the end of an event, so nothing ever displays. The connection is open and bytes are arriving; the parser is just still waiting for the terminator.
+
+**The generator raises halfway** — the client sees the stream simply stop. \`EventSource\` fires \`onerror\` and tries to reconnect; a \`fetch\` reader either finishes early or gets a network error.
+
+The status is still **200**. The status line and headers were sent before the first event, so it is too late to change them. That is why errors after the first byte have to travel **inside** the stream, as an event the interface knows how to show.`,
       },
     ],
   },
@@ -837,6 +1074,12 @@ why in one line:
 4. One legacy library that only has a blocking client
 5. Resizing uploaded images
 6. Running a 200-question eval suite against a model API`,
+        answer: `1. **Five model APIs at once** → async, with \`gather\`. It is pure waiting on the network.
+2. **Parsing 500 PDFs** → a background worker. It is heavy CPU work that does not belong inside the web process; use a process pool within that worker if you need the speed.
+3. **Cosine similarity over 100,000 vectors** → neither threads nor a pool. Use **numpy**, which does the maths in C, or let **pgvector** do it in the database. This is the trick answer: don't compute it in Python loops at all.
+4. **A legacy blocking client** → \`asyncio.to_thread\`.
+5. **Resizing uploaded images** → a background worker. It is CPU-bound, and the user does not need to wait for it.
+6. **A 200-question eval suite against a model API** → async with a semaphore. It is waiting on the network — and it belongs in a job or a CI step, not inside a request.`,
       },
       {
         mode: 'read',
@@ -848,6 +1091,13 @@ why in one line:
 
 Eight threads, eight cores, and it is barely faster than doing them one at a time. Explain
 why in one sentence, then say what you would do instead.`,
+        answer: `\`heavy_math\` is pure-Python computation, and the **GIL** lets only one thread run Python code at a time. So the eight threads take turns, running effectively one after another — plus some switching overhead.
+
+Instead:
+
+- run it in a **\`ProcessPoolExecutor\`**, via \`loop.run_in_executor(pool, heavy_math, x)\`, or
+- vectorise it with **numpy**, which releases the GIL while it computes, or
+- move it out of the request into a **worker**.`,
       },
     ],
   },

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { md } from '@/lib/md';
+import { md, mdInline } from '@/lib/md';
 import { crumbFor, topicById, topics } from '@/lib/content';
 
 export function generateStaticParams() {
@@ -22,7 +22,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
       <div className="small muted">{crumbFor(topic)}</div>
       <h1 style={{ margin: '2px 0 4px' }}>{topic.title}</h1>
-      <p className="muted" style={{ marginTop: 0 }}>{topic.outcome}</p>
+      <p className="muted" style={{ marginTop: 0 }}
+         dangerouslySetInnerHTML={{ __html: mdInline(topic.outcome) }} />
       <hr />
 
       <div dangerouslySetInnerHTML={{ __html: md(topic.notes.replace(/^\s*---\s*$/gm, '')) }} />

@@ -23,6 +23,7 @@ export type Practice = {
   mode: PracticeMode;
   title: string;
   body: string;         // markdown
+  answer: string;       // markdown — required, so no practice item can ship without one
 };
 
 export type Topic = {
@@ -124,6 +125,7 @@ export type Animation = {
 
 export type TopicProgress = {
   done?: boolean;
+  lastSeen?: number;            // for the "recently opened" refresher on the dashboard
   practiceDone?: number[];      // indices of completed practice items
   checkSeen?: boolean;
   pinnedVideos?: Record<string, { videoId: string; start?: number; end?: number }>;

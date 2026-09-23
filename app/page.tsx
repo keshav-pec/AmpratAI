@@ -1,5 +1,5 @@
 import Home from '@/components/Home';
-import { authoredCount, stages, topicsOfModule } from '@/lib/content';
+import { projects, stages, topicsOfModule } from '@/lib/content';
 
 export default function Page() {
   const ordered = stages.flatMap((s) =>
@@ -7,11 +7,13 @@ export default function Page() {
       topicsOfModule(m.id).map((t) => ({
         id: t.id,
         title: t.title,
+        outcome: t.outcome,
         moduleTitle: m.title,
         stage: s.n,
+        practiceCount: t.practice.length,
       })),
     ),
   );
-  const counts = Object.fromEntries(stages.map((s) => [s.n, authoredCount(s)]));
-  return <Home stages={stages} ordered={ordered} counts={counts} />;
+  const projectList = projects.map(({ id, stage, title, optional }) => ({ id, stage, title, optional }));
+  return <Home stages={stages} ordered={ordered} projects={projectList} />;
 }

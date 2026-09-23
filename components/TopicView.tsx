@@ -5,10 +5,11 @@ import { useEffect, useState } from 'react';
 import type { Topic } from '@/lib/types';
 import { animations as allAnimations } from '@/content/animations';
 import { useProgress } from '@/lib/progress';
-import { md } from '@/lib/md';
+import { md, mdInline } from '@/lib/md';
 import Deck from './Deck';
 import VideoPin from './VideoPin';
 import AnimationView from './Animation';
+import Answer from './Answer';
 
 type Nav = { prev?: { id: string; title: string }; next?: { id: string; title: string } };
 
@@ -44,7 +45,7 @@ export default function TopicView({
   const [showAnim, setShowAnim] = useState(true);
 
   useEffect(() => {
-    if (ready) setTopic(topic.id, {});
+    if (ready) setTopic(topic.id, { lastSeen: Date.now() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, topic.id]);
 
@@ -108,7 +109,8 @@ export default function TopicView({
       </div>
 
       <h1 style={{ marginTop: 8 }}>{topic.title}</h1>
-      <p className="muted" style={{ marginTop: -4 }}>{topic.outcome}</p>
+      <p className="muted" style={{ marginTop: -4 }}
+         dangerouslySetInnerHTML={{ __html: mdInline(topic.outcome) }} />
 
       <div className={`topic ${showAnim && anims.length ? '' : 'wide'}`}>
         <div className="pane">
@@ -168,8 +170,8 @@ export default function TopicView({
             {tab === 'practice' && (
               <>
                 <p className="small muted">
-                  Do these in your own editor. Mark one off when it works — nothing is
-                  checked or graded here.
+                  Do these in your own editor, then open the answer to check yourself. Mark
+                  one off when it works — nothing is graded here.
                 </p>
                 {topic.practice.map((p, i) => {
                   const done = (tp.practiceDone ?? []).includes(i);
@@ -189,6 +191,9 @@ export default function TopicView({
                       </div>
                       <h3 style={{ marginTop: 6 }}>{p.title}</h3>
                       <div dangerouslySetInnerHTML={{ __html: md(p.body) }} />
+                      <div className="row" style={{ marginTop: 4 }}>
+                        <Answer mode={p.mode} title={p.title} answer={p.answer} />
+                      </div>
                     </div>
                   );
                 })}

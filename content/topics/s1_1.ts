@@ -164,6 +164,29 @@ you just learned: taking your function, reading its signature, and putting it in
 Write \`@timed\` that prints how long the wrapped function took, in milliseconds, and
 returns the original result unchanged. Use \`functools.wraps\`. Then check that
 \`fn.__name__\` still prints the original name.`,
+        answer: `\`\`\`python
+import time
+from functools import wraps
+
+def timed(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            ms = (time.perf_counter() - start) * 1000
+            print(f"{fn.__name__} took {ms:.1f}ms")
+    return wrapper
+\`\`\`
+
+What to check in yours:
+
+- **\`perf_counter\`, not \`time.time\`.** It is monotonic and precise; wall-clock time can jump.
+- **\`try/finally\`**, so it still reports when the function raises. Without it, the slow failures — the ones you most want timed — print nothing.
+- **\`fn.__name__\` still prints the original name.** If it prints \`wrapper\`, \`@wraps\` is missing.
+
+One thing almost everyone misses: put \`@timed\` on an \`async def\` and it reports about 0ms. Calling an async function only creates a coroutine, so you timed the creation, not the work. An async version needs \`async def wrapper\` and \`return await fn(...)\` inside.`,
       },
       {
         mode: 'read',
@@ -183,6 +206,17 @@ returns the original result unchanged. Use \`functools.wraps\`. Then check that
     print(add_one(3))
 
 Then run it. If you were wrong, work out which decorator is applied first.`,
+        answer: `It prints **16**.
+
+Decorators apply bottom-up — the one nearest the function goes first:
+
+\`\`\`python
+add_one = double(double(add_one))
+\`\`\`
+
+The inner wrapper computes \`(3 + 1) * 2 = 8\`, and the outer one doubles that to \`16\`.
+
+Here both decorators are the same, so the order does not change the result. Swap one for \`@add_ten\` and it would: \`@add_ten\` above \`@double\` gives \`(3 + 1) * 2 + 10 = 18\`, the other way round gives \`(3 + 1 + 10) * 2 = 28\`.`,
       },
       {
         mode: 'spec',
@@ -198,6 +232,46 @@ Then have AI implement it. Now review it against your spec and answer:
 - What happens if \`attempts=0\`?
 
 Fix whatever it got wrong. The reviewing is the exercise.`,
+        answer: `A spec worth holding the AI to:
+
+- Retry at most \`attempts\` times, where \`attempts >= 1\` — otherwise raise \`ValueError\` when the decorator is applied
+- Retry only the exceptions listed in \`retry_on\`, never everything
+- Wait \`base * 2**attempt\`, times a random factor between 0.5 and 1.5
+- On the final failure, re-raise the original exception unchanged
+- Log each retry: function name, attempt number, delay, error
+
+\`\`\`python
+import random, time
+from functools import wraps
+
+def retry(attempts=3, base=0.5, retry_on=(ConnectionError, TimeoutError)):
+    if attempts < 1:
+        raise ValueError("attempts must be at least 1")
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            for i in range(attempts):
+                try:
+                    return fn(*args, **kwargs)
+                except retry_on as e:
+                    if i == attempts - 1:
+                        raise
+                    delay = base * 2**i * random.uniform(0.5, 1.5)
+                    log.warning("retrying", fn=fn.__name__, attempt=i + 1,
+                                delay=round(delay, 2), error=repr(e))
+                    time.sleep(delay)
+        return wrapper
+    return decorator
+\`\`\`
+
+Your four checks, answered:
+
+- **\`KeyboardInterrupt\`** — a bare \`except:\` or \`except BaseException:\` catches it, so Ctrl+C gets retried. Catching specific exceptions fixes this. The same bare \`except\` also swallows \`asyncio.CancelledError\`, which matters later.
+- **Metadata** — needs \`@wraps(fn)\`.
+- **Growing wait** — AI versions very often use a fixed \`time.sleep(1)\`. That is the thundering-herd bug from s1.3.
+- **\`attempts=0\`** — a naive loop runs zero times and quietly returns \`None\`, which is the worst possible outcome. Reject it up front.
+
+Also check that it uses \`time.sleep\`. If the function is \`async\`, that same line freezes the event loop, so an async version needs \`await asyncio.sleep\`.`,
       },
       {
         mode: 'break',
@@ -205,6 +279,15 @@ Fix whatever it got wrong. The reviewing is the exercise.`,
         body: `Take your \`@timed\` decorator and remove \`functools.wraps\`. Now decorate a
 function and try to use it with FastAPI, or just print \`help(fn)\`. Watch the information
 vanish. Put it back.`,
+        answer: `Without \`@wraps\`:
+
+- \`fn.__name__\` is \`'wrapper'\`
+- \`help(fn)\` shows \`wrapper(*args, **kwargs)\` with no docstring
+- in FastAPI it actually **breaks the endpoint**
+
+FastAPI reads a handler's signature to find its parameters. Without \`@wraps\`, the signature it sees is \`(*args, **kwargs)\`, so your real parameters disappear from the docs, and requests fail or get parsed wrongly.
+
+\`@wraps\` sets \`wrapper.__wrapped__ = fn\`. Tools like \`inspect.signature\` follow that link back to the real function, which is how FastAPI sees the true signature again.`,
       },
     ],
   },
@@ -330,6 +413,28 @@ manager by hand.`,
         title: 'Write a timer context manager',
         body: `By hand. \`with timer("label"):\` prints the elapsed milliseconds when the block
 ends. Make sure it still prints when the body raises — test that deliberately.`,
+        answer: `\`\`\`python
+import time
+from contextlib import contextmanager
+
+@contextmanager
+def timer(label):
+    start = time.perf_counter()
+    try:
+        yield
+    finally:
+        print(f"{label}: {(time.perf_counter() - start) * 1000:.0f}ms")
+\`\`\`
+
+Test the important case:
+
+\`\`\`python
+with timer("boom"):
+    raise ValueError("x")
+# prints "boom: 0ms", then the ValueError propagates
+\`\`\`
+
+Take away the \`try/finally\` and the print disappears on that test. The exception is thrown into the generator at the \`yield\`, so code after it never runs. Nothing is suppressed — the exception still propagates, which is what you want.`,
       },
       {
         mode: 'read',
@@ -343,6 +448,17 @@ ends. Make sure it still prints when the body raises — test that deliberately.
         return results
 
 Answer in one sentence, then rewrite it correctly.`,
+        answer: `If any \`client.get(u)\` raises — a timeout, a refused connection — the list comprehension stops, \`client.close()\` never runs, and the connection pool leaks.
+
+It bites under failure, which is exactly when you are retrying and creating more clients. A flaky upstream turns into file-descriptor exhaustion.
+
+\`\`\`python
+def fetch_all(urls):
+    with httpx.Client() as client:
+        return [client.get(u) for u in urls]
+\`\`\`
+
+Better still: create one client for the whole app and pass it in, rather than one per call.`,
       },
       {
         mode: 'tool',
@@ -350,6 +466,16 @@ Answer in one sentence, then rewrite it correctly.`,
         body: `Open the docs for \`httpx\`, \`sqlalchemy\` and any tracing library. For each,
 find the recommended way to create a client or session. Note how many of them are context
 managers. This is the convention, not a nicety.`,
+        answer: `What you should have found:
+
+- **httpx** — \`with httpx.Client() as c\`, and \`async with httpx.AsyncClient() as c\`
+- **SQLAlchemy** — \`with Session(engine) as s\`, \`async with AsyncSession(engine) as s\`, and \`with s.begin():\` for a transaction that commits or rolls back on its own
+- **Tracing (OpenTelemetry)** — \`with tracer.start_as_current_span("retrieval"):\`
+- **Anthropic SDK** — \`with client.messages.stream(...) as stream:\`
+
+Also locks and semaphores: \`async with lock:\` and \`async with sem:\`.
+
+The pattern: **anything with a lifetime is a context manager**. When you meet a new library, look for the \`with\` form first. If it has none, you are responsible for cleanup on every error path yourself.`,
       },
     ],
   },
@@ -495,6 +621,30 @@ correct at the boundaries — the last chunk should not be padded, and a file sh
 chunk should yield exactly one chunk.
 
 You will use this exact function again in Stage 3.`,
+        answer: `\`\`\`python
+def read_chunks(path, size, overlap=0):
+    if not 0 <= overlap < size:
+        raise ValueError("overlap must be between 0 and size - 1")
+    step = size - overlap
+    with open(path, encoding="utf-8") as f:
+        chunk = f.read(size)
+        if not chunk:
+            return                                  # empty file -> no chunks
+        yield chunk
+        while more := f.read(step):
+            chunk = (chunk[-overlap:] if overlap else "") + more
+            yield chunk
+\`\`\`
+
+Check it against the cases:
+
+- **Shorter than one chunk:** the first read gets everything, the next read returns \`""\`, so exactly one chunk comes out.
+- **Last chunk:** it is whatever is left, never padded.
+- **Exact multiple:** with 8 characters, size 4 and overlap 2 you get \`abcd\`, \`cdef\`, \`efgh\` — and no stray fourth chunk \`gh\`. That stray chunk is the classic off-by-one.
+
+**The trap hiding in here:** \`chunk[-0:]\` is the *whole* string, not an empty one, because \`-0 == 0\`. A version without the \`if overlap else ""\` guard silently doubles everything when overlap is 0.
+
+Rejecting \`overlap >= size\` matters too: then \`step\` is zero or negative, and the loop either stops early or never ends.`,
       },
       {
         mode: 'read',
@@ -513,6 +663,18 @@ You will use this exact function again in Stage 3.`,
     print(next(g))
 
 Pay attention to the order of the lines. That order is the whole lesson.`,
+        answer: `\`\`\`
+created
+starting
+about to yield 0
+0
+about to yield 1
+1
+\`\`\`
+
+\`starting\` comes **after** \`created\` because calling \`counter()\` runs none of the body. It only builds the generator object.
+
+The first \`next(g)\` runs the body up to the first \`yield\`. The second \`next(g)\` resumes exactly there, with \`i\` still in scope.`,
       },
       {
         mode: 'spec',
@@ -522,6 +684,30 @@ including a generator, without loading everything into memory.
 
 Have AI write it. Then check the cases it probably missed: an empty input, a final partial
 batch, and an input that is itself a generator. Fix what is wrong.`,
+        answer: `\`\`\`python
+from itertools import islice
+
+def batched(items, n):
+    if n < 1:
+        raise ValueError("n must be at least 1")
+    it = iter(items)
+    while batch := list(islice(it, n)):
+        yield batch
+\`\`\`
+
+Your cases:
+
+- **Empty input** yields nothing.
+- **Final partial batch** comes out shorter than n.
+- **Generator input** works, because \`islice\` pulls lazily from the same iterator.
+
+What AI versions usually get wrong:
+
+- Slicing \`items[i:i + n]\` or calling \`len(items)\`. Both crash on a generator, which has neither.
+- Padding the last batch with \`None\`.
+- Not guarding \`n = 0\`, which loops forever.
+
+Python 3.12 added \`itertools.batched\`. It yields tuples rather than lists, so check which one your caller expects.`,
       },
       {
         mode: 'break',
@@ -529,6 +715,22 @@ batch, and an input that is itself a generator. Fix what is wrong.`,
         body: `Write a generator over a list of 5 items. Loop over it, count the items, then loop
 again and print them. Explain to yourself why the second loop prints nothing, then fix it in
 two different ways.`,
+        answer: `The second loop prints nothing. The first loop exhausted the generator, and a generator cannot rewind.
+
+Two fixes:
+
+\`\`\`python
+# 1. materialise it once, when it is small enough to hold
+items = list(make_items())
+count = len(items)
+for x in items: print(x)
+
+# 2. call the generator function again for a fresh generator
+count = sum(1 for _ in make_items())
+for x in make_items(): print(x)
+\`\`\`
+
+Use the first when the data fits comfortably in memory. Use the second when producing it again is cheap. For a corpus of a million chunks, only the second is an option.`,
       },
     ],
   },
@@ -693,6 +895,26 @@ returned nothing.`,
     def first[T](xs: list[T]) -> T | None: ...
 
 Then say which arguments are required and which are optional in each.`,
+        answer: `\`\`\`ts
+function search(
+  q: string,
+  k: number = 5,
+  filters: Record<string, string> | null = null,
+): [string, number][]
+\`\`\`
+\`q\` is required; \`k\` and \`filters\` are optional.
+
+\`\`\`ts
+function route(provider: "anthropic" | "openai", stream: boolean): void
+\`\`\`
+Both are required — there are no defaults.
+
+\`\`\`ts
+function first<T>(xs: T[]): T | null
+\`\`\`
+\`xs\` is required.
+
+Note that \`filters\` is optional because it has a default, **not** because its type includes \`None\`. A parameter typed \`str | None\` with no default is still required.`,
       },
       {
         mode: 'spec',
@@ -705,6 +927,43 @@ vectors for tests — without either of them importing your Protocol. Run \`pyri
 confirm both are accepted.
 
 This is exactly the shape of the provider abstraction you build in Stage 2.`,
+        answer: `\`\`\`python
+from typing import Protocol
+
+class Embedder(Protocol):
+    @property
+    def dimensions(self) -> int: ...
+    async def embed(self, texts: list[str]) -> list[list[float]]: ...
+\`\`\`
+
+Two classes that satisfy it without inheriting from it:
+
+\`\`\`python
+import hashlib
+
+class ApiEmbedder:
+    dimensions = 1024
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        ...  # calls the real API
+
+class FakeEmbedder:
+    dimensions = 8
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        out = []
+        for t in texts:
+            h = hashlib.sha256(t.encode()).digest()
+            out.append([b / 255 for b in h[:8]])
+        return out
+
+def build_index(docs: list[str], embedder: Embedder) -> None: ...
+\`\`\`
+
+\`pyright\` accepts both as an \`Embedder\`.
+
+Two things worth noticing:
+
+- **Why \`hashlib\` and not \`hash()\`.** Python randomises \`hash()\` for strings on every run, so a "fake" built on it gives different vectors each time and your tests flake.
+- **\`pyright\` checks the whole signature.** Make \`embed\` synchronous in one class and it gets rejected. That is the protection you want: an async provider accidentally written as sync is caught before it ever runs.`,
       },
       {
         mode: 'tool',
@@ -713,6 +972,23 @@ This is exactly the shape of the provider abstraction you build in Stage 2.`,
 deliberate type error — return \`None\` from something annotated \`-> str\`. Confirm the
 checker catches it. Then wire it into your editor so you see it as you type, the way you
 already do with TypeScript.`,
+        answer: `\`\`\`bash
+uv add --dev pyright
+uv run pyright
+\`\`\`
+
+For this:
+
+\`\`\`python
+def name() -> str:
+    return None
+\`\`\`
+
+expect something like: \`Type "None" is not assignable to return type "str"\`.
+
+In VS Code, the Pylance extension runs pyright as you type. Set \`"python.analysis.typeCheckingMode": "standard"\` (or \`"strict"\`) in your settings, or it stays too quiet to be useful.
+
+The usual snag: the editor uses a different Python interpreter from your project, so every import looks missing. Point it at \`.venv/bin/python\`.`,
       },
     ],
   },
@@ -879,12 +1155,54 @@ never think about it again.`,
     pages = -total // per_page
 
 Number 3 is the subtle one. Think about what an empty result legitimately means.`,
+        answer: `1. **Mutable default.** One \`set()\` is shared across every call, so \`seen\` keeps growing forever.
+2. **Assignment is not a copy.** \`config\` *is* \`defaults\`, so this changes the model for everyone else who uses \`defaults\`.
+3. **Empty treated as failure.** Finding nothing relevant is a legitimate outcome, and this reports it as an error. It also can't tell \`[]\` (searched, found nothing) from \`None\` (never ran).
+4. **Identity on strings.** It works by accident when Python happens to reuse the string, and fails when the string arrives at runtime — from JSON or an env var. Python 3.8+ even warns: \`SyntaxWarning: "is" with a literal\`.
+5. **Late binding.** Every lambda returns the *last* tool name.
+6. **Missing negation.** \`-total // per_page\` is negative — for 10 items at 3 per page it gives \`-4\`. The ceiling-division idiom is \`-(-total // per_page)\`.`,
       },
       {
         mode: 'primitive',
         title: 'Fix them all',
         body: `Rewrite all six correctly, by hand. Then write one small test per fix that fails
 against the original version. The test is the part that proves you understood it.`,
+        answer: `\`\`\`python
+def collect(x, seen=None):
+    seen = set() if seen is None else seen
+    seen.add(x)
+    return seen
+
+config = {**defaults, "model": "haiku"}          # or defaults.copy()
+
+if chunks is None:
+    raise RetrievalUnavailable("search backend did not respond")
+if not chunks:
+    return NOT_IN_DOCUMENTS                      # a real, valid empty result
+
+if provider == "anthropic": ...
+
+handlers = [lambda name=name: name for name in tool_names]
+
+pages = -(-total // per_page)                    # or (total + per_page - 1) // per_page
+\`\`\`
+
+Why \`is None\` rather than \`seen or set()\`: a caller who deliberately passes an empty set would have it silently replaced by \`or\`.
+
+A test that fails against each original, for example:
+
+\`\`\`python
+def test_collect_does_not_share_state():
+    assert collect(1) == {1}
+    assert collect(2) == {2}          # the original returns {1, 2}
+
+def test_pages_rounds_up():
+    assert pages_for(total=10, per_page=3) == 4   # the original gives -4
+
+def test_handlers_capture_their_own_name():
+    hs = make_handlers(["a", "b"])
+    assert [h() for h in hs] == ["a", "b"]         # the original gives ["b", "b"]
+\`\`\``,
       },
       {
         mode: 'decision',
@@ -895,6 +1213,21 @@ backend was down". Right now it returns a list either way.
 Decide how you will represent those three outcomes, and defend it in three sentences. There
 is more than one reasonable answer — what matters is that the caller cannot confuse a real
 empty result with a failure. You will make this exact decision again in Stage 3.`,
+        answer: `One good design: **return a list for results or no results, and raise for failure.**
+
+\`\`\`python
+async def retrieve(q: str) -> list[Chunk]:
+    try:
+        return await search(q)                    # [] is a legitimate "nothing matched"
+    except (TimeoutError, ConnectionError) as e:
+        raise RetrievalUnavailable() from e
+\`\`\`
+
+Why: an empty list is a normal answer, and the caller must handle it anyway, by saying "that isn't in these documents". An outage is exceptional and must never look like an empty result.
+
+That is the failure this design prevents. If "search is down" becomes \`[]\`, your assistant confidently tells the user their documents don't mention something — during an outage.
+
+A typed result like \`Found | NoMatch | Unavailable\` is equally good, and more explicit. A weak design is \`None\` for failure and \`[]\` for empty: it is technically distinct, but \`if not results:\` treats them the same, and someone will write exactly that.`,
       },
     ],
   },

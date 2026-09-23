@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { md } from '@/lib/md';
+import ProjectStatus from '@/components/ProjectStatus';
 import { projectById, projects } from '@/lib/content';
 
 export function generateStaticParams() {
@@ -23,7 +24,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       </div>
       <h1 style={{ marginTop: 8 }}>{project.title}</h1>
       <div dangerouslySetInnerHTML={{ __html: md(project.body) }} />
-      <div className="card" style={{ marginTop: 26 }}>
+      <ProjectStatus id={project.id} />
+      <div className="card" style={{ marginTop: 16 }}>
         <b>How this is meant to go</b>
         <p className="small" style={{ marginBottom: 0 }}>
           You architect it and direct the build; AI writes most of the lines; you review,

@@ -157,6 +157,33 @@ skills, and a list of roles where each role has company, title and months.
 Then feed it three dicts: one clean, one with the years as a string, one missing the name.
 Print \`e.errors()\` for the failure and read it carefully. You will see this error shape
 again in Stage 2 and you want it to look familiar.`,
+        answer: `\`\`\`python
+from pydantic import BaseModel, ValidationError
+
+class Role(BaseModel):
+    company: str
+    title: str
+    months: int
+
+class Resume(BaseModel):
+    name: str
+    email: str | None = None
+    years: int
+    skills: list[str] = []
+    roles: list[Role] = []
+\`\`\`
+
+Results:
+
+- **Clean input** validates.
+- **\`"years": "5"\`** becomes the number \`5\` — that is lax-mode conversion.
+- **Missing name** raises. \`e.errors()\` includes:
+
+\`\`\`python
+{'type': 'missing', 'loc': ('name',), 'msg': 'Field required', 'input': {...}}
+\`\`\`
+
+Notice the defaults \`skills: list[str] = []\`. In a plain function that would be the mutable-default bug from s1.1. In pydantic it is safe: pydantic copies the default for each instance.`,
       },
       {
         mode: 'read',
@@ -174,6 +201,12 @@ again in Stage 2 and you want it to look familiar.`,
     M.model_validate({"a": 1, "b": True, "d": "extra"})
 
 Then run them. The fourth one is the one worth thinking about — what happened to \`d\`?`,
+        answer: `- \`{"a": "7", "b": 1}\` → **valid.** \`a=7\`, \`b=True\`, \`c=[]\`.
+- \`{"a": 7.0, "b": True}\` → **valid.** \`a=7\`. A float with no fractional part is accepted for an \`int\`, but \`7.5\` would fail.
+- \`{"a": "seven", "b": True}\` → **fails** with \`int_parsing\` on \`a\`.
+- \`{"a": 1, "b": True, "d": "extra"}\` → **valid, and \`d\` silently disappears.** The default \`extra="ignore"\` drops unknown keys without a word.
+
+That last one is why you set \`extra="forbid"\` on anything a model produces. A model inventing a field is a signal you want to see.`,
       },
       {
         mode: 'spec',
@@ -186,6 +219,43 @@ Write the spec first — what is required, what defaults exist, what happens to 
 string. Then have AI implement it, and check specifically: does a missing salary produce
 \`None\` or an invented number? Does "12-18 LPA" get parsed or rejected? Is either behaviour
 the one you specified?`,
+        answer: `\`\`\`python
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+class JobPosting(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=1)
+    company: str
+    location: str | None = None
+    min_years: int | None = Field(default=None, ge=0, le=40)
+    max_years: int | None = Field(default=None, ge=0, le=40)
+    skills: list[str] = []
+    remote_allowed: bool | None = None     # None = not stated. Not the same as False.
+    salary_raw: str | None = None          # always keep what was written
+    salary_min_lpa: float | None = None    # filled only when parsing is unambiguous
+    salary_max_lpa: float | None = None
+
+    @model_validator(mode="after")
+    def years_in_order(self):
+        if self.min_years is not None and self.max_years is not None \\
+                and self.min_years > self.max_years:
+            raise ValueError("min_years cannot exceed max_years")
+        return self
+\`\`\`
+
+Decisions in that spec:
+
+- A missing salary is \`None\` everywhere.
+- \`"12-18 LPA"\` gives \`12.0\` and \`18.0\`, with the raw string kept.
+- \`"Competitive"\` gives no numbers, raw string kept.
+
+What AI versions usually get wrong:
+
+- **Defaulting salary to \`0\`** — a fabricated number that looks like data.
+- **\`remote_allowed: bool = False\`** — silently turns "not mentioned" into "no".
+- **Dropping the raw salary string** — so you can never audit or re-parse it.
+- **Parsing \`"12-18 LPA"\` but mangling** \`"12 to 18 lakhs"\`, \`"₹12L – ₹18L"\` or monthly figures.`,
       },
       {
         mode: 'break',
@@ -193,6 +263,21 @@ the one you specified?`,
         body: `Take a working model and send it a nested list where one element deep inside is the
 wrong type. Print the error and find the \`loc\` path. Then set \`extra="forbid"\` and send
 an unexpected key. Read both errors — you are learning to read the format, not to avoid it.`,
+        answer: `A wrong type deep inside a nested list reports its full path:
+
+\`\`\`python
+{'type': 'int_parsing', 'loc': ('roles', 1, 'months'), 'msg': 'Input should be a valid integer...'}
+\`\`\`
+
+Read it as: \`roles\`, item \`1\`, field \`months\`.
+
+With \`extra="forbid"\` and an unexpected key:
+
+\`\`\`python
+{'type': 'extra_forbidden', 'loc': ('nickname',), 'msg': 'Extra inputs are not permitted'}
+\`\`\`
+
+Both errors are structured: they name the exact field and the reason. That is what lets you hand them back to a model in Stage 2 and ask it to fix its own output.`,
       },
     ],
   },
@@ -320,6 +405,37 @@ short reason with a maximum length.
 Have AI implement it. Then try to break it with the kind of output a model actually
 produces: a score of 1.5, a decision of "likely", a citation pointing at line -1. Confirm
 each one fails. If any slips through, fix the constraint.`,
+        answer: `\`\`\`python
+from typing import Literal
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+class Citation(BaseModel):
+    requirement: str = Field(min_length=1)
+    resume_line: int = Field(ge=1)
+
+class Match(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    score: float = Field(ge=0.0, le=1.0)
+    decision: Literal["strong", "possible", "no"]
+    matched: list[Citation] = []
+    reason: str = Field(min_length=1, max_length=400)
+
+    @model_validator(mode="after")
+    def consistent(self):
+        if self.decision == "strong" and self.score < 0.6:
+            raise ValueError("a strong match needs a score of at least 0.6")
+        return self
+\`\`\`
+
+Your three break attempts fail as they should:
+
+- **score 1.5** → \`less_than_equal\`
+- **"likely"** → \`literal_error\`
+- **line -1** → \`greater_than_equal\`
+
+The consistency check is the one most people miss. A model can return decision \`strong\` with score \`0.2\`. Each field is valid on its own, and together they contradict each other.
+
+One check the model *cannot* express: that \`resume_line\` is at most the number of lines in the resume. The model has no access to the resume. Do that check afterwards, against the source. It is the hallucinated-citation check you will use constantly in Stage 3.`,
       },
       {
         mode: 'read',
@@ -334,6 +450,14 @@ validate?
 
 The last one is the interesting case. Is case-sensitivity what you want here, and what would
 you do about it?`,
+        answer: `- \`{"score": 1, "kind": "a"}\` → **passes.** \`1\` becomes \`1.0\`, inside the bounds.
+- \`{"score": "0.5", "kind": "b"}\` → **passes** in lax mode. \`"0.5"\` becomes \`0.5\`.
+- \`{"score": 1.01, "kind": "a"}\` → **fails**: above \`le=1\`.
+- \`{"score": 0.5, "kind": "A"}\` → **fails.** \`Literal\` is case-sensitive.
+
+Whether that last one is what you want: lowercasing \`"A"\` to \`"a"\` is safe because it is unambiguous, so a \`field_validator(mode="before")\` that lowercases is reasonable.
+
+The line to hold is this. Normalise *formatting* freely. Never "normalise" *meaning* — turning \`"likely"\` into \`"possible"\` is you guessing on the model's behalf.`,
       },
       {
         mode: 'decision',
@@ -345,6 +469,15 @@ it, and say why in one line: \` keshav@x.com \`, \`KESHAV@X.COM\`, \`+91 98765 4
 There is no single right answer. What matters is that you can defend the line you drew —
 and that you never silently turn "about 3 years" into the number 3 without recording that
 you guessed.`,
+        answer: `A defensible line:
+
+- \`" keshav@x.com "\` → **normalise.** Strip the spaces. Unambiguous.
+- \`"KESHAV@X.COM"\` → **normalise.** Lowercase it; in practice, email addresses are treated as case-insensitive.
+- \`"+91 98765 43210"\` → **normalise** to \`+919876543210\`. It is formatting only.
+- \`"12-18 LPA"\` → **parse** into min and max, and keep the raw string.
+- \`"about 3 years"\` → **do not** silently store \`3\`. Either reject it, or store \`3\` with an explicit flag — \`years_approximate = True\` — and keep the raw text.
+
+The rule behind all five: normalising removes formatting noise, and **never invents precision**. "About 3" and "3" are different facts, and a matching system that treats them as the same will rank people wrongly with complete confidence.`,
       },
     ],
   },
@@ -438,6 +571,21 @@ database URL, and a model name with a default. Add \`.env\` to \`.gitignore\` an
 
 Now delete the key from \`.env\` and start the app. Read the error. That clear startup
 failure is the entire point of this topic.`,
+        answer: `With the key removed, startup fails immediately:
+
+\`\`\`
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Settings
+anthropic_api_key
+  Field required [type=missing, ...]
+\`\`\`
+
+It names the setting. That is the point — compare it with a \`KeyError\` on the first request at midnight.
+
+The usual snags:
+
+- **\`env_file=".env"\` is relative to where you *run* the process**, not to where the settings file lives. Start it from another directory and the file is quietly not found.
+- **Real environment variables beat \`.env\`.** A stale \`export ANTHROPIC_API_KEY=...\` in your shell silently overrides the file.
+- **A misspelt name in \`.env\` is ignored**, not reported — \`extra="ignore"\` means unknown keys are dropped. You get "field required" for the real name and no hint about the typo.`,
       },
       {
         mode: 'read',
@@ -449,6 +597,9 @@ failure is the entire point of this topic.`,
     NEXT_PUBLIC_ANTHROPIC_KEY=sk-ant-...
 
 The third one is not Python at all, and it is the most dangerous. Say why.`,
+        answer: `1. **\`logger.info(f"... {settings.api_key}")\`** — if the key is \`SecretStr\`, this prints \`**********\`. If it is a plain \`str\`, the key is now in your logs, your log provider and your backups. Either way, never log it.
+2. **\`return {"config": settings.model_dump()}\`** — returns every setting to anyone who calls the endpoint. \`SecretStr\` fields stay masked, but the database URL — with its password — is a plain string, so it goes out in full. Never serve settings over an API.
+3. **\`NEXT_PUBLIC_ANTHROPIC_KEY=sk-ant-...\`** — the worst of the three. Next.js copies every \`NEXT_PUBLIC_\` variable into the JavaScript bundle sent to every browser. Anyone can open devtools, search for \`sk-ant\`, and spend your money. No bug required: it is public by design.`,
       },
     ],
   },
@@ -553,6 +704,29 @@ units or format where relevant.
 Print \`model_json_schema()\` and read the output line by line. In Stage 4 you will hand this
 exact structure to a model. Knowing what is in it now means the frameworks will not look
 like magic then.`,
+        answer: `\`\`\`python
+from pydantic import BaseModel, Field
+
+class LookupOrderArgs(BaseModel):
+    order_id: str = Field(
+        pattern=r"^[A-Za-z]{2}-\\d{5}$",
+        description="Order ID exactly as the customer sees it, e.g. 'AB-19472'. Not case-sensitive.",
+    )
+    include_history: bool = Field(
+        default=False,
+        description="Also return status changes and refund events for this order.",
+    )
+    max_items: int = Field(
+        default=20, ge=1, le=100,
+        description="Maximum number of line items to return, between 1 and 100.",
+    )
+
+print(LookupOrderArgs.model_json_schema())
+\`\`\`
+
+The output has \`properties\`, each with a \`type\`, \`description\`, and where relevant \`default\`, \`pattern\`, \`minimum\` and \`maximum\`. There is also \`"required": ["order_id"]\`.
+
+One thing to notice: pydantic adds a \`title\` to every field — \`"Order Id"\`, \`"Max Items"\`. That is noise to a model, and many tool libraries strip it before sending the schema.`,
       },
       {
         mode: 'decision',
@@ -566,6 +740,11 @@ wrong, then rewrite it:
 
 Compare your rewrites against the rule: could someone who has never seen your system pass
 the right value using only this sentence?`,
+        answer: `- **"the date"** — which date, in what format, in which timezone? Rewrite: *"Date the order was placed, as YYYY-MM-DD, in Indian Standard Time."*
+- **"temperature"** — Celsius or Fahrenheit? Rewrite: *"Temperature in degrees Celsius, for example 21.5."*
+- **"limit"** — a limit of what, within what range, and what if it is left out? Rewrite: *"Maximum number of results to return, from 1 to 50. Defaults to 5."*
+
+The test for all three: could someone who has never seen your system pass the right value using only that sentence? A model is exactly that someone, at 3am, with nobody to ask.`,
       },
     ],
   },

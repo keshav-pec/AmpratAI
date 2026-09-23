@@ -118,6 +118,17 @@ page of a real PDF.
 
 Write down the ratio for each against the English baseline. You now have your own numbers
 rather than my estimates, which is better.`,
+        answer: `Rough ratios against the English prose baseline — yours will differ by tokenizer:
+
+| Content | Tokens compared with English prose |
+|---|---|
+| English prose | 1× |
+| The same content as JSON | about 1.5–2.5× |
+| Python code | about 1.5–2.5× |
+| Hindi, Devanagari script | about 2–4× (newer tokenizers do much better) |
+| A page from a real PDF | depends on layout — table and header noise adds up |
+
+**The snag:** different providers use different tokenizers. The same text gives different counts on different models, so always count with the tokenizer of the model you will actually call. Anthropic has a token-counting endpoint for exactly this.`,
       },
       {
         mode: 'primitive',
@@ -129,6 +140,34 @@ subset of \`chunks\` that fits, given everything else and the space reserved for
 
 Decide what happens when even one chunk does not fit, and make it explicit rather than
 silently truncating. You will use this in Stage 3, and that decision is the interesting part.`,
+        answer: `\`\`\`python
+class ContextOverflow(Exception): ...
+
+def fit(system, history, chunks, question, window, reserve_output, count):
+    fixed = count(system) + count(question) + sum(count(m) for m in history)
+    budget = window - reserve_output - fixed
+    if budget <= 0:
+        raise ContextOverflow(f"no room for context: fixed parts use {fixed} tokens")
+
+    chosen, used = [], 0
+    for chunk in chunks:                 # chunks arrive best-first
+        n = count(chunk)
+        if used + n > budget:
+            break                        # a policy choice — see below
+        chosen.append(chunk)
+        used += n
+
+    if chunks and not chosen:
+        raise ContextOverflow("the most relevant chunk does not fit on its own")
+    return chosen
+\`\`\`
+
+The decisions you had to make:
+
+- **\`break\` or \`continue\`?** \`break\` keeps a strict relevance order. \`continue\` skips an oversized chunk to fit smaller, less relevant ones. Either is defensible — pick one on purpose.
+- **Who shrinks when history is too long?** Usually the oldest turns get trimmed or summarised before the retrieved evidence does.
+- **Never cut a chunk mid-sentence** to squeeze it in. A half-sentence is worse than no sentence.
+- **Raise, don't hide.** "Nothing fits" should be an error you can see, not an empty context the model then answers from nothing.`,
       },
       {
         mode: 'decision',
@@ -142,6 +181,24 @@ compact format, and whether that is worth doing.
 
 There is no trick here. The point is that you can now answer a cost question that most
 candidates cannot.`,
+        answer: `The volume:
+
+- **Input:** 900 × 2,000 = 1.8M tokens a month
+- **Output:** 900 × 400 = 0.36M tokens a month
+
+With illustrative prices — always check the current ones:
+
+- **A small model at $1 in / $5 out per million:** 1.8 × $1 + 0.36 × $5 = **$3.60 a month** — a few hundred rupees.
+- **A large model at $5 in / $25 out:** 1.8 × $5 + 0.36 × $25 = **$18 a month**.
+
+Switching from JSON to a compact output format might save 30–40% of output tokens — well under a dollar a month on the small model. **Not worth the engineering at this volume**; at a million resumes a month it would be.
+
+The levers that matter more here:
+
+- **Batch processing.** Anthropic's Message Batches API is 50% cheaper for work that doesn't need an instant answer — and resume processing doesn't.
+- **Prompt caching** for the fixed instruction block at the start of every request.
+
+The point is being able to answer the question at all. Most candidates can't.`,
       },
     ],
   },
@@ -260,6 +317,14 @@ hatch: "if you do not know, reply NOT_FOUND."
 
 Compare. That difference is one sentence of prompt, and it is the cheapest reliability win
 you will ever get.`,
+        answer: `Without an escape hatch, you should get a **specific, confident, invented** answer — a clause number, a figure, a date. With "if you do not know, reply NOT_FOUND", you should usually get \`NOT_FOUND\`.
+
+The escape hatch works best combined with:
+
+- the actual documents, when you have them
+- the instruction "answer only from the provided documents"
+
+Decide whether general knowledge is allowed at all. A support bot answering about *your* refund policy should never fall back on "refund policies in general".`,
       },
       {
         mode: 'decision',
@@ -272,6 +337,12 @@ you will ever get.`,
 4. A summariser adds a fact the document does not contain
 
 Each of these has a different right answer, and you will implement all four in Stages 2 and 3.`,
+        answer: `1. **A support bot invents a refund window** → give it the real policy (retrieval), plus an escape hatch, plus a required citation.
+2. **A resume parser reports a phone number that is not on the resume** → **check the value against the source.** After normalising, the number must actually appear in the document text; if not, it is \`null\`. The instruction helps, but the check is the real fix.
+3. **A classifier returns a category you never defined** → a closed vocabulary — \`Literal\`, an enum, or the schema of a tool the model has to call — plus a repair loop when it fails.
+4. **A summariser adds a fact** → a faithfulness check: break the summary into claims and verify each one against the source, with a judge model or a claim-checking step. Also tell it to use only information in the text.
+
+Each fix sits in a different place — the prompt, the schema, or a check after the model — and you will build all four in Stages 2 and 3.`,
       },
       {
         mode: 'read',
@@ -282,6 +353,16 @@ human conversation?
 
 Write two sentences. Then test it: get a model to give a correct answer, challenge it, and
 see what happens.`,
+        answer: `Think about what text usually follows a challenge. In books, forums and conversations, "are you sure?" is usually followed by a correction or a concession. So the **most plausible continuation** after a challenge is to change the answer — whether the first answer was right or not.
+
+On top of that, preference tuning rewards being agreeable, which pushes the same way. The name for this is **sycophancy**.
+
+When you test it, you will often see a correct answer flip to a wrong one.
+
+Better ways to check an answer:
+
+- ask for the **evidence** — a quote or a citation you can verify
+- ask the question **again, independently**, and compare the two answers`,
       },
     ],
   },
@@ -409,6 +490,21 @@ confident results. Measuring that gap is what evaluation is for.`,
 Then check: identical vectors, perpendicular vectors, opposite vectors. And answer this —
 if both inputs are already normalised, what does your function reduce to? That is why
 embedding search is fast.`,
+        answer: `\`\`\`python
+import math
+
+def cosine(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
+    return dot / (math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b)))
+\`\`\`
+
+- identical vectors → **1**
+- perpendicular → **0**
+- opposite → **−1**
+
+If both inputs are already normalised, the denominator is 1 and **this is just the dot product**. Normalise once when you store a vector, and every search after that is a cheap multiply-and-add. That is why embedding search is fast.
+
+The fuller version in s1.6.t5 also guards against zero vectors.`,
       },
       {
         mode: 'tool',
@@ -422,6 +518,14 @@ opposite, and the pair that should match but does not.
 
 Those two pairs are the argument for everything in Stage 3. Finding them yourself is worth
 far more than reading about them.`,
+        answer: `What you should find:
+
+- **The negation pair** — "covers flooding" and "does not cover flooding" — scores **very high**, often above 0.85. Meaning-wise they are opposites.
+- **The number pair** — "under 30 days" and "under 90 days" — scores **very high**.
+- **The exact identifier** — an order number — sits near other identifiers, not near the text about that specific order.
+- **Real paraphrases** score high, as they should.
+
+The snag: raw similarity values are **model-specific**. Some models put almost everything between 0.7 and 0.9. Compare **rankings** within one model — which pair came top — rather than fixed thresholds, and never carry a threshold over from one model to another.`,
       },
       {
         mode: 'decision',
@@ -435,6 +539,13 @@ far more than reading about them.`,
 5. "Can I get my money back?"
 
 Then say what your answer implies about how you should build retrieval in Stage 3.`,
+        answer: `1. **"What is the refund window?"** → both, with vector search leading.
+2. **"Status of order AB-19472"** → neither, really. This is a **database lookup**, not retrieval — in an agent, it is a tool call. Keyword search is the fallback if it must go through the search index.
+3. **"Policies that exclude flood damage"** → both, plus a **reranker**. Negation is hard for either one alone.
+4. **"Section 4.2.1"** → keyword search, or better a **metadata filter** on the section path. A section number is an identifier.
+5. **"Can I get my money back?"** → vector search. It is a paraphrase of "refund".
+
+The implication for Stage 3: build **hybrid** retrieval, keep **metadata filters** for identifiers, add a **reranker**, and send some questions to a **structured lookup** instead of retrieval. That last one is the routing idea from s3.7.`,
       },
     ],
   },
@@ -461,6 +572,9 @@ that distribution before one is picked.
     temperature 0      always take the most likely token
     temperature 1      sample according to the probabilities as they are
     temperature 1.5+   flatten the distribution; unlikely tokens become possible
+
+Ranges differ by provider: Anthropic's API goes from 0 to 1, while OpenAI's and Gemini's go
+up to 2.
 
 What to use:
 
@@ -555,10 +669,22 @@ building the car, not the engine. Go and build something.`,
         mode: 'tool',
         title: 'Feel temperature',
         body: `Send the same prompt ten times at temperature 0, then ten times at 1.0, then five
-times at 1.5. Ask for JSON each time.
+times at 1.5. Ask for JSON each time. (Anthropic's API stops at 1.0, so use an OpenAI or
+Gemini model for the 1.5 run.)
 
 Count how many parse successfully at each setting. That number is your argument for
 temperature 0 in extraction, and you will have measured it rather than been told it.`,
+        answer: `What you should see:
+
+- **Temperature 0:** all ten parse, and the outputs are nearly identical.
+- **Temperature 1.0:** most still parse, with noticeably varied content.
+- **Temperature 1.5:** failures climb — missing brackets, extra commentary.
+
+Three details:
+
+- **Anthropic's API only goes up to 1.0**, so the 1.5 run needs a model whose API allows it — OpenAI's and Gemini's go to 2.
+- **With enforced structured output** — a schema the API guarantees — parsing stays at 100% at any temperature. The randomness moves into the *values* instead.
+- **Some reasoning models ignore or restrict temperature** entirely. Check the model's documentation before drawing conclusions.`,
       },
       {
         mode: 'decision',
@@ -568,6 +694,14 @@ make things up, what an embedding is, and what temperature does.
 
 No notes. If you stall on one, that is the one to revisit — and it is the only reliable
 signal you have that this module is finished.`,
+        answer: `Model two-minute versions — yours should sound like you, not like these:
+
+- **Token:** "The model doesn't read letters or words. It reads chunks of text, a bit like syllables, each turned into a number. You pay per chunk, and some text, like code or Hindi, breaks into more chunks than English."
+- **Why models make things up:** "It's autocomplete. It always writes whatever sounds most likely to come next. If it doesn't know your company's policy, the most likely-sounding answer is still a confident, specific one — just invented."
+- **Embedding:** "It turns a sentence into a position on a huge map of meaning. Sentences that mean similar things land close together, so you can find related text by looking nearby — even if it uses different words."
+- **Temperature:** "It's a randomness dial. At zero it always picks the most likely next word. Turn it up and it takes more chances — good for brainstorming, bad for anything that has to be exact."
+
+If you stalled on one, that is the topic to revisit before moving on.`,
       },
       {
         mode: 'read',
@@ -578,6 +712,10 @@ signal you have that this module is finished.`,
 2. Temperature 1.4 with a strict JSON schema
 3. Asking a model for a page number from a document you did not give it
 4. The same prompt, same model, same temperature 0, run twice`,
+        answer: `1. **A 100-page document with the question at the very top** → weaker, vaguer answers. Models attend less reliably to instructions buried far from where they start writing. Put the question **after** the documents.
+2. **Temperature 1.4 with a strict JSON schema** → if the API **enforces** the schema, the JSON stays valid but the values get erratic. If it doesn't, expect parse failures. And on Anthropic's API, 1.4 is simply rejected — the limit is 1.0.
+3. **Asking for a page number from a document you didn't provide** → it will often invent a plausible page number. There is nothing to ground the answer in, and no escape hatch was offered.
+4. **The same prompt twice, at temperature 0** → usually identical, but **not guaranteed**. Tiny numeric differences in how requests are batched on the provider's hardware can change a token, and after that the text can drift. Never build anything that depends on exact repeatability.`,
       },
     ],
   },

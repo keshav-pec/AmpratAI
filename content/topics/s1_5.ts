@@ -121,6 +121,38 @@ query parameter and an error case.
 
 Write the pydantic models first, by hand. Then have AI write the FastAPI handler. Compare
 line counts with the original and note specifically which lines disappeared and why.`,
+        answer: `An example port, for a typical \`POST /tasks\` with a body, a \`?notify\` query parameter and a 409 conflict:
+
+\`\`\`python
+from datetime import date, datetime
+from typing import Literal
+from pydantic import BaseModel, Field
+
+class TaskIn(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    due: date | None = None
+    priority: Literal["low", "normal", "high"] = "normal"
+
+class TaskOut(TaskIn):
+    id: int
+    created_at: datetime
+
+@router.post("/tasks", status_code=201)
+async def create_task(body: TaskIn, notify: bool = False,
+                      db: AsyncSession = Depends(get_db)) -> TaskOut:
+    if await db.scalar(select(Task.id).where(Task.title == body.title)):
+        raise HTTPException(409, "a task with this title already exists")
+    ...
+\`\`\`
+
+Lines that disappeared compared with Express:
+
+- per-field presence and type checks
+- converting \`"true"\` to a boolean for \`notify\`
+- building the 400 responses by hand
+- the API documentation
+
+Lines that did **not** disappear: business rules like the duplicate check, and authorisation. Those were never validation, and no framework writes them for you.`,
       },
       {
         mode: 'tool',
@@ -130,6 +162,19 @@ deliberately invalid body and read the 422 response carefully — it is the same
 error shape from the pydantic module.
 
 Finally, open \`/openapi.json\` and find your model in it.`,
+        answer: `A deliberately invalid body returns 422 with this shape:
+
+\`\`\`json
+{
+  "detail": [
+    {"type": "missing", "loc": ["body", "query"], "msg": "Field required", "input": {}}
+  ]
+}
+\`\`\`
+
+It is the same structured pydantic error as before, with one addition: \`loc\` starts with **where** the bad input was — \`body\`, \`query\`, \`path\` or \`header\`.
+
+In \`/openapi.json\`, your model appears under \`components.schemas\`, for example \`SearchIn\`. That is the file a TypeScript client generator reads.`,
       },
     ],
   },
@@ -247,6 +292,35 @@ message when over.
 Have AI implement it as a dependency. Then check the hard part: where does the *after* part
 happen, given that you only know the cost once the call is finished? There is more than one
 reasonable answer — pick one and say why.`,
+        answer: `The hard part is that the cost is only known **after** the call. Don't rely on the timing of code after \`yield\` in a dependency — it differs between FastAPI versions, and for streaming responses in particular.
+
+Make it explicit instead: **reserve, then settle.**
+
+\`\`\`python
+class Budget:
+    def __init__(self, tenant_id: str, store): ...
+
+    async def reserve(self, max_cost_inr: float) -> None:
+        # atomically: if spent + reserved + max_cost > limit -> raise 429
+        ...
+    async def settle(self, reserved_inr: float, actual_inr: float) -> None:
+        # release the reservation, record the actual cost
+        ...
+
+async def get_budget(tenant: Tenant = Depends(current_tenant)) -> Budget:
+    return Budget(tenant.id, store)
+
+@app.post("/chat")
+async def chat(body: ChatIn, budget: Budget = Depends(get_budget)):
+    worst_case = price(model, input_tokens=count(body), output_tokens=MAX_TOKENS)
+    await budget.reserve(worst_case)
+    ...  # call the model; when the final usage arrives, even while streaming:
+    await budget.settle(worst_case, actual_cost(usage))
+\`\`\`
+
+**Why reserve rather than check:** with a plain "is spent < limit?" check, ten concurrent requests all pass it at the same instant, then all spend. Reserving the worst case first closes that gap.
+
+When streaming, call \`settle\` in the generator's \`finally\` block, so a cancelled stream still records what it actually cost.`,
       },
       {
         mode: 'read',
@@ -256,6 +330,9 @@ Depends(current_user))\` and \`current_user(token = Depends(oauth2))\`:
 
 What order do they run in? If \`current_user\` appears in two different dependencies for the
 same request, how many times does it run? What happens to the chain if \`oauth2\` raises?`,
+        answer: `- **Order:** \`oauth2\` runs first, then \`current_user\`, then \`current_tenant\`, then \`search\`. Dependencies resolve from the inside out.
+- **A dependency used twice in one request runs once.** FastAPI caches each dependency's result per request, so both uses get the same value. Pass \`use_cache=False\` if you genuinely need two separate calls.
+- **If \`oauth2\` raises** — say a 401 \`HTTPException\` — the chain stops there. Nothing further down runs, \`search\` included, and the client gets the 401.`,
       },
       {
         mode: 'tool',
@@ -264,6 +341,33 @@ same request, how many times does it run? What happens to the chain if \`oauth2\
 with a fake, and assert the handler works without a database running at all.
 
 That test running with no database is the thing to notice.`,
+        answer: `\`\`\`python
+import httpx, pytest
+from httpx import ASGITransport
+from app.main import app
+from app.db import get_db
+
+class FakeSession:
+    async def execute(self, *a, **k): return FakeResult([{"id": 1, "title": "x"}])
+
+async def fake_db():
+    yield FakeSession()
+
+async def test_list_docs_needs_no_database():
+    app.dependency_overrides[get_db] = fake_db
+    try:
+        async with httpx.AsyncClient(transport=ASGITransport(app=app),
+                                     base_url="http://test") as c:
+            r = await c.get("/docs")
+        assert r.status_code == 200
+    finally:
+        app.dependency_overrides.clear()
+\`\`\`
+
+The two usual snags:
+
+- **The override key must be the exact function** used in \`Depends(...)\` — the same object, not a look-alike with the same name.
+- **Forgetting \`clear()\`** leaks the fake into the next test. A fixture that clears on teardown handles this for good.`,
       },
     ],
   },
@@ -383,6 +487,27 @@ as a header, and includes it in a structured log line. Then log something from i
 handler with the same id.
 
 Make a request and confirm you can follow it through both log lines by the id alone.`,
+        answer: `\`\`\`python
+import uuid, time, structlog
+from starlette.requests import Request
+
+@app.middleware("http")
+async def request_context(request: Request, call_next):
+    structlog.contextvars.clear_contextvars()
+    rid = request.headers.get("x-request-id") or uuid.uuid4().hex[:12]
+    structlog.contextvars.bind_contextvars(request_id=rid)
+    request.state.request_id = rid
+    start = time.perf_counter()
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = rid
+    log.info("request", path=request.url.path, status=response.status_code,
+             ms=round((time.perf_counter() - start) * 1000))
+    return response
+\`\`\`
+
+Binding the id with \`contextvars\` means **every** log line inside the handler carries \`request_id\` automatically. You never pass it around by hand.
+
+**Clear the context at the start of each request**, or ids can leak into log lines that belong to other requests.`,
       },
       {
         mode: 'break',
@@ -391,6 +516,15 @@ Make a request and confirm you can follow it through both log lines by the id al
 the stream stop being a stream. Remove it.
 
 Ten minutes now saves an afternoon in Stage 2.`,
+        answer: `A middleware that reads the body, like this:
+
+\`\`\`python
+body = b"".join([chunk async for chunk in response.body_iterator])
+\`\`\`
+
+collects the **entire** stream before anything is passed on. The client receives the whole answer in one lump at the end. Time to first token becomes equal to total time, and every other part of the streaming setup looks perfectly correct — which is what makes this so hard to diagnose.
+
+The fix: middleware touches only the status and headers. If you ever really need to inspect bodies, write a pure ASGI middleware that forwards each chunk as it arrives.`,
       },
       {
         mode: 'decision',
@@ -401,6 +535,33 @@ validation failure, not found, rate limited, provider outage, and an unexpected 
 Write it down. Then say which fields the React app actually branches on, and which are only
 for you. Keeping those two sets separate is the difference between an error contract and a
 dump.`,
+        answer: `One shape for every error:
+
+\`\`\`json
+{
+  "error": {
+    "code": "rate_limited",
+    "message": "You have used today's budget. It resets at midnight.",
+    "retry_after_s": 3600,
+    "request_id": "r-8c1f2a",
+    "detail": null
+  }
+}
+\`\`\`
+
+| Case | Status | \`code\` |
+|---|---|---|
+| Validation failure | 422 | \`invalid_input\` (\`detail\` holds the field errors) |
+| Not found | 404 | \`not_found\` |
+| Rate limited or over budget | 429 | \`rate_limited\` |
+| Provider outage | 503 | \`upstream_unavailable\` |
+| Unexpected crash | 500 | \`internal\` |
+
+What the **React app branches on**: \`code\`, \`retry_after_s\`, and \`detail\` (to highlight form fields). \`message\` is safe to show as it is.
+
+What is **only for you**: \`request_id\` — show it to the user as a reference number, so a support message can be traced.
+
+**Never include** stack traces or a provider's raw error body. The second can contain fragments of the prompt.`,
       },
     ],
   },
@@ -526,6 +687,59 @@ Then add: a stop button that aborts the fetch, a server-side disconnect check th
 it fires, and an error injected at number 12 that the page renders inline.
 
 When you plug a model into this in Stage 2, one line changes.`,
+        answer: `Server:
+
+\`\`\`python
+@app.post("/numbers")
+async def numbers(request: Request):
+    async def gen():
+        try:
+            for n in range(1, 21):
+                if await request.is_disconnected():
+                    log.info("client_disconnected", at=n)
+                    return
+                if n == 12:
+                    raise RuntimeError("simulated failure")
+                yield f"data: {json.dumps({'n': n})}\\n\\n"
+                await asyncio.sleep(0.3)
+            yield "data: [DONE]\\n\\n"
+        except RuntimeError as e:
+            yield f"data: {json.dumps({'error': str(e)})}\\n\\n"
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+\`\`\`
+
+Client:
+
+\`\`\`js
+const controller = new AbortController();
+stopButton.onclick = () => controller.abort();
+
+const res = await fetch('/numbers', { method: 'POST', signal: controller.signal });
+const reader = res.body.getReader();
+const decoder = new TextDecoder();
+let buffer = '';
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  buffer += decoder.decode(value, { stream: true });
+  let end;
+  while ((end = buffer.indexOf('\\n\\n')) >= 0) {
+    const frame = buffer.slice(0, end);
+    buffer = buffer.slice(end + 2);
+    const data = frame.replace(/^data: /, '');
+    if (data === '[DONE]') return;
+    const msg = JSON.parse(data);
+    if (msg.error) { showInlineError(msg.error); return; }
+    append(msg.n);
+  }
+}
+\`\`\`
+
+The snag everyone hits once: **one network read is not one event.** A read can hold half a frame, or three. Buffer the text and split on the blank line.
+
+\`{ stream: true }\` stops a multi-byte character (Hindi text, an emoji) that is split across two reads from turning into garbage.`,
       },
       {
         mode: 'break',
@@ -533,9 +747,18 @@ When you plug a model into this in Stage 2, one line changes.`,
         body: `One at a time, then undo each:
 1. Remove the blank line after \`data:\`
 2. Change the media type to \`application/json\`
-3. Remove the disconnect check, close the page mid-stream, and watch the server keep working
+3. Remove the disconnect check, close the page mid-stream, and read the server logs. Does
+   the generator stop — and if it does, where, and why?
 
 The third one is the one that costs money in Stage 2.`,
+        answer: `1. **No blank line.** No frame ever ends, so the parser never finds the \`\\n\\n\` it is looking for. Nothing renders, even though bytes are arriving.
+2. **Media type \`application/json\`.** \`EventSource\` refuses the stream outright. A \`fetch\` reader usually still streams — but proxies and compression layers are more likely to buffer JSON. That makes this bug worse than a clean failure: it works on your machine and breaks behind a proxy.
+3. **No disconnect check.** You will probably see the generator stop anyway, at its next \`await\` or \`yield\`. Starlette notices the closed connection and cancels the stream for you.
+
+So why keep the check? Two reasons:
+
+- It stops work **between** awaits — when you are waiting 20 seconds for a model's first token, Starlette has nothing to cancel until then.
+- **Cancelling your generator only stops billing if the upstream model call is cancelled too.** The call must sit inside \`async with client.messages.stream(...)\`, or be closed in a \`finally\`. That is the part that costs money in Stage 2.`,
       },
     ],
   },
@@ -647,6 +870,31 @@ that a missing key gives 401 and a wrong key gives 401 with the same message and
 
 Then add a simple in-memory daily spend counter that returns 429 past a limit you set, and
 test that it trips.`,
+        answer: `\`\`\`python
+import secrets
+from datetime import date
+from fastapi import Depends, HTTPException
+from fastapi.security import APIKeyHeader
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def require_key(key: str | None = Depends(api_key_header)) -> None:
+    expected = settings.api_key.get_secret_value().encode()
+    if key is None or not secrets.compare_digest(key.encode(), expected):
+        raise HTTPException(401, "invalid or missing API key")
+
+_spend = {"day": date.today(), "inr": 0.0}
+
+async def within_budget() -> None:
+    if _spend["day"] != date.today():
+        _spend.update(day=date.today(), inr=0.0)
+    if _spend["inr"] >= settings.daily_cap_inr:
+        raise HTTPException(429, "daily budget reached")
+\`\`\`
+
+- **Why \`auto_error=False\`:** with it on, FastAPI rejects a *missing* header itself, with its own status and message. That differs from your *wrong key* response, and the difference tells an attacker which case they hit. Handling both in one place makes them identical.
+- **Compare bytes:** \`compare_digest\` on \`str\` only accepts ASCII.
+- **The in-memory counter** resets on every restart and is not shared between workers. Fine for a personal project; Redis or the database for anything real.`,
       },
       {
         mode: 'read',
@@ -656,7 +904,15 @@ test that it trips.`,
     const res = await fetch('/api/chat', { body: JSON.stringify({ prompt }) })
     app.get('/config', () => ({ model: settings.model, key: settings.api_key }))
 
-Two of these are fine and two are not. Say which, and what an attacker does with each.`,
+Only one of these is safe. Say which, and what an attacker does with each of the others.`,
+        answer: `Only **one** is safe:
+
+1. **\`NEXT_PUBLIC_ANTHROPIC_API_KEY\`** — **leaks.** It is copied into the JavaScript bundle. An attacker opens devtools, searches for \`sk-ant\`, and uses your key.
+2. **\`fetch('https://api.anthropic.com/...', { headers: { 'x-api-key': key } })\` from the browser** — **leaks.** The key is sitting in browser code and shows in the Network tab.
+3. **\`fetch('/api/chat', ...)\`** — **safe.** The browser talks to *your* server, and the key never leaves it.
+4. **\`app.get('/config', ...)\` returning \`key\`** — **leaks.** One \`curl\` to \`/config\` and they have it.
+
+The attacker's next step is the same for all three leaks: send their own traffic with your key until you notice the bill.`,
       },
     ],
   },
@@ -723,8 +979,12 @@ has nothing.
     assert any("data:" in c for c in chunks)
     assert chunks[-2] == "data: [DONE]"
 
-Worth asserting: that more than one chunk arrived (proving it actually streamed rather than
-arriving in one lump), and that the done event is present.
+Worth asserting: that more than one event arrived, and that the done event is present.
+
+One honest limit: httpx's in-process transport collects the whole response before handing it
+to you. So this proves the stream has the right *format*, not that bytes arrived one at a
+time. To prove real streaming, run the app with uvicorn in a test fixture and check that the
+first event arrives well before the last.
 
 ---
 
@@ -749,7 +1009,7 @@ Not a percentage. A list:
     check: [
       { q: 'Why does ASGITransport make tests fast?', a: 'No server and no network — requests go straight into the app object.' },
       { q: 'What must you remember between tests that use overrides?', a: 'Clear them, or one test\'s fake leaks into the next.' },
-      { q: 'What proves an endpoint actually streamed?', a: 'That more than one chunk arrived, rather than the whole body appearing at once.' },
+      { q: 'What proves an endpoint actually streamed?', a: 'Timing, not counting. Against a real running server, the first event arrives well before the last. The in-process test client buffers the whole body, so counting events only proves the format.' },
       { q: 'Which failure paths matter most in an AI API?', a: 'Provider error, provider timeout, and malformed provider output — the three that generated test suites usually skip.' },
     ],
     practice: [
@@ -761,6 +1021,35 @@ provider, a timeout, malformed JSON in the response, and a body missing a requir
 
 Have AI write the tests with faked responses. Then review each one and ask: is it asserting
 the behaviour I specified, or just that nothing threw? Rewrite the weak ones.`,
+        answer: `The spec comes first, and the mapping is a real decision. When the **provider** rate-limits you, *your user* is not the one being rate-limited — so a 503 with a retry hint is more honest than passing the 429 through.
+
+\`\`\`python
+class FailingModel:
+    def __init__(self, exc): self.exc = exc
+    async def complete(self, prompt): raise self.exc
+
+@pytest.mark.parametrize("exc,status,code", [
+    (ProviderRateLimited(retry_after=5), 503, "upstream_rate_limited"),
+    (ProviderTimeout(),                  504, "upstream_timeout"),
+    (ProviderBadResponse("bad json"),    502, "upstream_bad_response"),
+])
+async def test_provider_failures(client, exc, status, code):
+    app.dependency_overrides[get_model] = lambda: FailingModel(exc)
+    r = await client.post("/chat", json={"prompt": "hi"})
+    assert r.status_code == status
+    body = r.json()["error"]
+    assert body["code"] == code
+    assert body["request_id"]
+
+async def test_invalid_body_never_calls_the_model(client):
+    calls = []
+    app.dependency_overrides[get_model] = lambda: RecordingModel(calls)
+    r = await client.post("/chat", json={})
+    assert r.status_code == 422
+    assert calls == []
+\`\`\`
+
+Rewrite any generated test that only asserts \`status_code != 200\`. It passes for every wrong behaviour too.`,
       },
       {
         mode: 'tool',
@@ -768,6 +1057,25 @@ the behaviour I specified, or just that nothing threw? Rewrite the weak ones.`,
         body: `Write a test for your streaming endpoint that asserts multiple chunks arrived, the
 done event is present, and a mid-stream error is delivered as an event rather than a
 connection drop.`,
+        answer: `\`\`\`python
+async def test_stream_format(client):
+    async with client.stream("POST", "/chat", json={"prompt": "hi"}) as r:
+        assert r.headers["content-type"].startswith("text/event-stream")
+        frames = [l async for l in r.aiter_lines() if l.startswith("data:")]
+    assert len(frames) > 2
+    assert frames[-1] == "data: [DONE]"
+
+async def test_mid_stream_error_is_an_event(client):
+    app.dependency_overrides[get_model] = lambda: ModelThatFailsAfter(3)
+    async with client.stream("POST", "/chat", json={"prompt": "hi"}) as r:
+        frames = [l async for l in r.aiter_lines() if l.startswith("data:")]
+    assert r.status_code == 200
+    assert any('"error"' in f for f in frames)
+\`\`\`
+
+**An honest limit:** httpx's in-process transport collects the whole response before handing it to you. These tests prove the stream has the right **format**, not that bytes arrived **incrementally**.
+
+To prove real streaming, start the app with uvicorn in a fixture, call it over a real socket, and assert that the first event arrived well before the last one.`,
       },
     ],
   },

@@ -133,6 +133,55 @@ binding.
 
 Review it against the five details in the notes. Generated Dockerfiles very often miss the
 host binding and the non-root user.`,
+        answer: `\`.dockerignore\` first:
+
+\`\`\`
+.git
+.venv
+__pycache__/
+*.pyc
+.pytest_cache
+.ruff_cache
+.env
+.env.*
+!.env.example
+node_modules
+dist
+*.pdf
+\`\`\`
+
+A multi-stage Dockerfile that meets the spec:
+
+\`\`\`dockerfile
+FROM python:3.12-slim AS builder
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+WORKDIR /app
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+COPY . .
+RUN uv sync --frozen --no-dev
+
+FROM python:3.12-slim
+ENV PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH"
+WORKDIR /app
+RUN useradd --create-home app
+COPY --from=builder --chown=app /app /app
+USER app
+EXPOSE 8000
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+\`\`\`
+
+The build tools stay in the first stage, so the final image is smaller.
+
+What generated Dockerfiles most often miss:
+
+- \`--host 0.0.0.0\`
+- the non-root \`USER\`
+- dependencies installed *before* \`COPY . .\`
+- installing from the lockfile — \`--frozen\` — rather than resolving fresh versions
+
+For real builds, also pin the \`uv\` image to a version instead of \`latest\`.`,
       },
       {
         mode: 'tool',
@@ -143,6 +192,12 @@ Now move \`COPY . .\` above the dependency install, and do the same two builds. 
 four numbers.
 
 The difference you just measured is the whole topic.`,
+        answer: `Typical numbers:
+
+- **Good order:** the first build takes roughly a minute; a one-line code change rebuilds in a few seconds, because only the last layer changes.
+- **Bad order** (\`COPY . .\` before installing): every code change reinstalls all dependencies, so each rebuild costs about as much as the first build.
+
+The snag: BuildKit **cache mounts** (\`RUN --mount=type=cache,target=/root/.cache/uv ...\`) make even the bad order much faster, because downloaded packages are reused. Take them out for this experiment to see the pure layer effect — then put them back, because in real builds you want both.`,
       },
       {
         mode: 'break',
@@ -152,6 +207,9 @@ The difference you just measured is the whole topic.`,
 size with \`docker images\`.
 
 Each failure is one you would otherwise meet for the first time under pressure.`,
+        answer: `1. **No \`--host 0.0.0.0\`.** Uvicorn listens on 127.0.0.1 *inside* the container. \`curl localhost:8000\` from your machine gets "connection reset" or "empty reply", even though \`docker ps\` says the container is up.
+2. **No \`PYTHONUNBUFFERED\`.** Your \`print()\` output goes missing from \`docker logs\`, or turns up much later, because stdout is buffered when it is not a terminal. Uvicorn's own log lines still appear — they go to stderr, which is flushed sooner. That mix makes it very confusing.
+3. **No \`.dockerignore\`.** The image grows by the size of \`.venv\` and \`.git\` — often hundreds of megabytes. Every commit changes \`.git\`, which invalidates \`COPY . .\` and everything after it. And if \`.env\` exists, it is now baked into an image layer.`,
       },
     ],
   },
@@ -273,6 +331,16 @@ Then prove it: \`docker compose down\`, \`docker compose up\`, and confirm your 
 still there. Then \`down -v\` and confirm it is gone.
 
 Knowing the difference in your fingers is worth the two minutes.`,
+        answer: `What you should see:
+
+- **\`docker compose up -d\`** starts \`db\`, waits until its healthcheck passes, then starts \`api\`.
+- **\`down\`, then \`up\` again** — your rows are still there, because they live in the named volume.
+- **\`down -v\`, then \`up\`** — an empty database.
+
+Two snags that confuse everyone once:
+
+- **Volume names get a project prefix** — \`myapi_pgdata\`, not \`pgdata\` — when you look for them with \`docker volume ls\`.
+- **Changing \`POSTGRES_PASSWORD\` after the volume exists does nothing.** The official image only runs its setup on an *empty* data directory. Your old password still applies until you delete the volume.`,
       },
       {
         mode: 'break',
@@ -282,6 +350,10 @@ remove the healthcheck condition and restart repeatedly until you catch the race
 API starts before Postgres is ready.
 
 Both of these are errors you will otherwise meet for the first time on a deadline.`,
+        answer: `- **\`db\` changed to \`localhost\`**: \`connection refused\`. Inside the api container, \`localhost\` means the api container itself, and there is no Postgres there.
+- **Healthcheck condition removed**: every so often, the api starts before Postgres is accepting connections. You see "connection refused" or "the database system is starting up", and the api exits.
+
+If you have \`restart: unless-stopped\` set, the api may silently recover on its second or third try — which hides the race rather than fixing it. Keep \`condition: service_healthy\`, *and* give your app a short retry on its initial database connection. In production there is no compose file to order things for you.`,
       },
     ],
   },
@@ -383,6 +455,29 @@ write them, and justify every dependency \`/ready\` touches.
 
 Then test it: stop Postgres while the API runs. \`/health\` should still return 200 and
 \`/ready\` should fail. If both fail, your split is wrong.`,
+        answer: `**The split:**
+
+- **\`/health\`** — no dependencies. It returns 200 whenever the process can answer at all.
+- **\`/ready\`** — checks what a request genuinely needs: the database, with a short timeout, and Redis if the app cannot serve without it. **Never the model provider.**
+
+\`\`\`python
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+@app.get("/ready")
+async def ready(db: AsyncSession = Depends(get_db)):
+    try:
+        async with asyncio.timeout(2):
+            await db.execute(text("SELECT 1"))
+    except Exception:
+        raise HTTPException(503, "database unavailable")
+    return {"status": "ready"}
+\`\`\`
+
+With Postgres stopped, \`/health\` should return **200** and \`/ready\` should return **503**. If both fail, your health check is touching the database.
+
+The timeout matters: a readiness check that hangs is worse than one that fails, because the platform waits on it.`,
       },
       {
         mode: 'read',
@@ -399,6 +494,13 @@ Then test it: stop Postgres while the API runs. \`/health\` should still return 
         return {"ok": True}
 
 Both are wrong, for different reasons. Say what happens in production with each.`,
+        answer: `**A** — \`/health\` depends on the database. When the database blips, liveness fails and the platform **restarts every container**. A restart cannot fix a database outage, so they crash-loop, and that load can slow the database's recovery. That check belongs in \`/ready\`.
+
+**B** — \`/ready\` calls the model provider. Three separate costs:
+
+- **Money:** every probe is a billed request — every few seconds, on every instance, all day.
+- **Rate limits:** the probes eat quota your real users need.
+- **Availability:** a provider outage or latency spike marks **every** instance unready, so the platform sends them no traffic. Even pages that never touch the model — history, settings — go down with it.`,
       },
     ],
   },
@@ -501,6 +603,12 @@ project and an exercise, and it is what your Stage 1 self-check is really asking
 Run your migrations against it. Open \`/docs\` on the public URL and make a request.
 
 Then send the link to one person and ask them to open it. That is the completion condition.`,
+        answer: `The steps are in the notes. These are the snags that actually happen:
+
+- **The port.** Listen on the port the platform gives you: \`--port \${PORT:-8000}\` in a shell-form \`CMD\`. The JSON-array form of \`CMD\` does not expand variables.
+- **The database URL.** Use the platform's *internal* hostname. For \`asyncpg\`, TLS is set with \`ssl=require\` in the URL — not the \`sslmode=\` you may see in examples for other drivers.
+- **Migrations.** Run \`alembic upgrade head\` as a separate release or pre-deploy command, not at app startup. Two instances starting at once will race each other through the same migration.
+- **The check.** Send the URL to someone else and have them open \`/docs\`. Your own browser may be reaching a cached or local copy.`,
       },
       {
         mode: 'break',
@@ -510,6 +618,17 @@ where the pydantic settings module pays off, because the error names the missing
 instead of failing somewhere random later.
 
 Then put it back and confirm recovery.`,
+        answer: `With a required variable missing, the deploy crash-loops, and the log shows the pydantic \`ValidationError\` **naming the exact setting**:
+
+\`\`\`
+ValidationError: 1 validation error for Settings
+database_url
+  Field required
+\`\`\`
+
+Set the variable, redeploy, and it comes up healthy.
+
+That named error is the payoff from the settings module. Compare it with a \`KeyError\` inside some function on the first real request, an hour after a deploy that looked green.`,
       },
       {
         mode: 'decision',
@@ -520,6 +639,16 @@ else.
 List what you would need: which logs, which fields, which endpoints, which dashboards.
 Compare that list against what you actually have right now, and add the cheapest missing
 item today.`,
+        answer: `What you would need, in rough order:
+
+1. **Structured error logs searchable by \`request_id\`**, with the route and status
+2. **A \`version\` field on every log line** — the git commit — so you can see whether the 500s began with a deploy
+3. Error counts by type and route over time
+4. Whether the database and the provider are healthy
+5. p95 latency
+6. A one-click rollback to the previous deploy
+
+The cheapest item most people are missing is **number 2**. Add the commit hash to every log line through an environment variable set at build time. "Did this start with the last deploy?" is the first question in almost every incident, and without it you are guessing.`,
       },
     ],
   },

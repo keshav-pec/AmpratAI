@@ -109,6 +109,20 @@ plus \`pytest\` and \`ruff\` as dev dependencies. Write a one-line script and ru
 
 Then open \`pyproject.toml\` and \`uv.lock\` and read them. You are looking for the same
 structure you already know from \`package.json\`.`,
+        answer: `\`\`\`bash
+uv init my-api && cd my-api
+uv add fastapi httpx pydantic-settings
+uv add --dev pytest ruff
+echo 'print("hello from uv")' > hello.py
+uv run python hello.py
+\`\`\`
+
+In \`pyproject.toml\` you should see your runtime packages under \`[project] dependencies\`, and the dev tools under \`[dependency-groups] dev\`. \`uv.lock\` pins the exact version of every package, including the ones you never asked for, with hashes.
+
+The usual snags:
+
+- **Running \`python hello.py\`** instead of \`uv run python hello.py\`. That uses the system Python, which does not have your packages.
+- **Forgetting to commit \`uv.lock\`.** Your Docker build then resolves fresh versions, and "works on my machine" is back.`,
       },
       {
         mode: 'tool',
@@ -116,6 +130,14 @@ structure you already know from \`package.json\`.`,
         body: `Make two projects that need different versions of the same library — pin different
 versions of \`httpx\`. Confirm both work, and that neither affects the other or your system
 Python. This is the problem the tool exists to solve, and seeing it once is enough.`,
+        answer: `\`\`\`bash
+uv init a && cd a && uv add "httpx==0.27.*" && uv run python -c "import httpx; print(httpx.__version__)"
+cd .. && uv init b && cd b && uv add "httpx==0.28.*" && uv run python -c "import httpx; print(httpx.__version__)"
+\`\`\`
+
+Each prints its own version. Each project has its own \`.venv\`, and neither touches the other.
+
+Your system Python, with \`python -c "import httpx"\`, most likely fails with \`ModuleNotFoundError\`. That is the correct result, not a problem: nothing leaked into it.`,
       },
     ],
   },
@@ -199,6 +221,17 @@ default argument and a \`time.sleep\` inside an \`async def\`. Run \`ruff check 
 confirm it flags both.
 
 Then turn on format-on-save in your editor and forget about it.`,
+        answer: `With \`select = ["E", "F", "I", "UP", "B", "ASYNC"]\`, \`ruff check .\` should flag both:
+
+- **\`B006\`** — do not use mutable data structures for argument defaults
+- **\`ASYNC251\`** — \`time.sleep\` called inside an async function
+
+The usual snags:
+
+- **Config under the wrong table.** Rule selection lives under \`[tool.ruff.lint]\`; older examples put \`select\` directly under \`[tool.ruff]\`.
+- **The editor extension reading a different config** from the one CI uses, so the two disagree.
+
+When both flags appear, you have a linter that catches the two most expensive mistakes in Stage 1 before they run.`,
       },
     ],
   },
@@ -334,6 +367,26 @@ overlap, a document shorter than one chunk, an empty document, overlap equal to 
 should that even do?), and a document that divides exactly.
 
 That fifth case is the one that usually reveals an off-by-one.`,
+        answer: `\`\`\`python
+import pytest
+
+@pytest.mark.parametrize("text,size,overlap,expected", [
+    ("abcdefghij", 4, 2, ["abcd", "cdef", "efgh", "ghij"]),   # exact overlap
+    ("abc",        10, 2, ["abc"]),                           # shorter than one chunk
+    ("",            4, 0, []),                                # empty document
+    ("abcdefgh",    4, 0, ["abcd", "efgh"]),                  # divides exactly
+    ("abcdefgh",    4, 2, ["abcd", "cdef", "efgh"]),          # divides exactly, with overlap
+])
+def test_chunks(text, size, overlap, expected):
+    assert list(chunk_text(text, size, overlap)) == expected
+
+def test_overlap_must_be_smaller_than_size():
+    with pytest.raises(ValueError):
+        list(chunk_text("abcdef", 3, 3))
+\`\`\`
+
+- **Overlap equal to size** means every step moves forward by zero characters. That is never meaningful, so reject it.
+- **The last case is the off-by-one detector.** A buggy chunker emits a fourth chunk, \`"gh"\`, which is only the overlap tail.`,
       },
       {
         mode: 'spec',
@@ -344,6 +397,38 @@ That fifth case is the one that usually reveals an off-by-one.`,
 Then have AI write the tests using \`respx\`. Review them: does each test actually assert
 the behaviour you specified, or just that it did not crash? That distinction is where most
 generated tests are weak.`,
+        answer: `Spec first — this is where the value is:
+
+- **429 with \`Retry-After: 2\`** → wait exactly 2 seconds, retry, then succeed
+- **500** → retry up to N times, then raise \`ProviderUnavailable\`
+- **Timeout** → retried like a 500
+- **200 with malformed JSON** → do not retry; raise \`ProviderBadResponse\`
+- **Request body missing a field** → your API returns 422, and the provider is never called
+
+\`\`\`python
+@respx.mock
+async def test_429_waits_for_retry_after():
+    route = respx.post(URL).mock(side_effect=[
+        httpx.Response(429, headers={"retry-after": "2"}),
+        httpx.Response(200, json=OK_BODY),
+    ])
+    delays = []
+    async def fake_sleep(d): delays.append(d)
+
+    result = await call_model("hi", sleep=fake_sleep)
+
+    assert result == "hi"
+    assert route.call_count == 2
+    assert delays == [2.0]
+\`\`\`
+
+Weak generated tests look like this:
+
+- \`assert result is not None\`, or \`pytest.raises(Exception)\` — they prove only that *something* happened
+- no check on \`route.call_count\`, so a client that never retries still passes
+- mocking your own function instead of the HTTP layer, so the retry code is never exercised
+
+That is why \`sleep\` is injectable. Patching \`asyncio.sleep\` globally can interfere with the test runner itself.`,
       },
       {
         mode: 'tool',
@@ -353,6 +438,28 @@ generated tests are weak.`,
 
 In Stage 3 you will add an eval gate to this same pipeline. Getting the pipeline existing
 now means that is a small change later.`,
+        answer: `\`\`\`yaml
+# .github/workflows/ci.yml
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest -q
+\`\`\`
+
+A deliberately broken commit should turn the check red on the pull request.
+
+- **\`--frozen\`** fails the build if \`uv.lock\` is out of date with \`pyproject.toml\` — which is exactly what you want in CI.
+- **\`uv sync\` installs the dev group by default**, so \`pytest\` and \`ruff\` are available.
+
+Use the current major version of each action when you set this up.`,
       },
     ],
   },
@@ -457,6 +564,27 @@ Stage 5.`,
 cost, latency and a request id. Pipe the output through \`jq\` and filter by model name.
 
 That filtering is the whole point — confirm it works before you have thousands of lines.`,
+        answer: `\`\`\`python
+import structlog
+
+structlog.configure(processors=[
+    structlog.contextvars.merge_contextvars,
+    structlog.processors.add_log_level,
+    structlog.processors.TimeStamper(fmt="iso"),
+    structlog.processors.JSONRenderer(),
+])
+log = structlog.get_logger()
+
+log.info("model_call", model="claude-haiku-4-5", tokens_in=1240, tokens_out=310,
+         cost_inr=0.41, latency_ms=820, request_id="r-123")
+\`\`\`
+
+\`\`\`bash
+uv run python app.py | jq 'select(.model == "claude-haiku-4-5")'
+uv run python app.py | jq -s 'map(.cost_inr // 0) | add'     # total spend
+\`\`\`
+
+If \`jq\` shows parse errors, something is still printing plain text into the same stream — a stray \`print\`, or a library's own logger. Route everything through one logger.`,
       },
       {
         mode: 'read',
@@ -467,7 +595,11 @@ That filtering is the whole point — confirm it works before you have thousands
     print(settings.model_dump())
 
 Say what leaks in each case, and what you would log instead. The fourth one leaks
-everything — including the thing you were most careful about elsewhere.`,
+more than it looks like it should.`,
+        answer: `1. **\`log.info(f"prompt: {prompt}")\`** — the full prompt, including user data, goes into your logs, and as unstructured text you cannot filter. Log \`prompt_version\`, token count and \`request_id\` instead.
+2. **\`log.debug("client", headers=request.headers)\`** — \`Authorization\` headers, API keys and cookies. Log an allowlist, such as \`user-agent\`, or header *names* only.
+3. **\`log.error(f"failed: {exc}", extra={"body": request_body})\`** — the whole request body: documents, personal data. The exception message may carry data too. Log the error *type*, \`request_id\` and route.
+4. **\`print(settings.model_dump())\`** — every setting. \`SecretStr\` fields stay masked, but the database URL with its password is a plain string and prints in full, along with anything else not typed as a secret. That is the argument for making every secret a \`SecretStr\`: the one field typed that way is the one that didn't leak.`,
       },
       {
         mode: 'decision',
@@ -478,6 +610,17 @@ yesterday at 3pm. You have their email and nothing else.
 List exactly the log fields you would need to reconstruct what happened — without storing
 the document text itself. Then check your current logging plan against that list. Whatever
 is missing is what you add before Stage 3.`,
+        answer: `Fields you would need, while storing **references rather than content**:
+
+- \`request_id\`, \`user_id\` / \`tenant_id\`, timestamp, route
+- the query's hash and length — or the query itself, if your retention policy allows it
+- retrieval: \`chunk_id\`s, scores, \`doc_id\` and \`doc_version\` for each returned chunk
+- \`prompt_version\`, model and parameters
+- \`tokens_in\`, \`tokens_out\`, \`finish_reason\`, latency
+- any fallback taken, any error type
+- any feedback events on that response
+
+Chunk ids plus document versions let you fetch the **exact** text the model saw, from the source store, without ever logging it. Add a way to go from the user's email to their \`request_id\`s, and "what happened at 3pm yesterday" becomes a query instead of a guess.`,
       },
     ],
   },
