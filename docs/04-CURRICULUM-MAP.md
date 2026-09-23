@@ -212,26 +212,26 @@ deck-led.
 
 ## 7. Content inventory
 
-| Stage | Modules | Topics | Animations | Practice items (est.) | Projects |
+| Stage | Modules | Topics | Animations | Practice items | Projects |
 |---|---|---|---|---|---|
-| 1 Python & backend | 8 | 38 | 6 | ~90 | 2 |
-| 2 LLM APIs & prompting | 6 | 33 | 9 | ~85 | 2 |
-| 3 RAG & evals | 8 | 44 | 12 | ~110 | 2 |
-| 4 Tools, agents, MCP | 7 | 34 | 10 | ~85 | 2 |
-| 5 System design & ops | 8 | 37 | 8 | ~80 | 3 |
-| 6 Capstone & portfolio | 5 | 17 | 2 | ~20 | 1 + capstone |
-| 7 Interviews & depth | 4 | 12 | 2 | ~15 | 1 |
-| **Total** | **46** | **215** | **49** | **~485** | **13 + capstone** |
+| 1 Python & backend | 8 | 38 | 7 | 103 | 2 |
+| 2 LLM APIs & prompting | 6 | 33 | 8 | 71 | 2 |
+| 3 RAG & evals | 8 | 44 | 18 | 122 | 2 |
+| 4 Tools, agents, MCP | 7 | 34 | 11 | 71 | 2 |
+| 5 System design & ops | 8 | 37 | 10 | 74 | 3 |
+| 6 Capstone & portfolio | 5 | 17 | 1 | 44 | 1 (the capstone) |
+| 7 Interviews & depth | 4 | 12 | 2 | 26 | 1 |
+| **Total** | **46** | **215** | **57** | **511** | **13** |
 
-Generated from `content/curriculum.yaml`, which is the source of truth. If they disagree,
-the YAML wins.
+Counted from the written content. Animations are counted in the stage that defines them;
+topics in later stages reuse earlier ones (Stage 6 uses five).
 
-**Authoring approach:** content is written a stage ahead of where you are, not all at once.
-215 topics written up front would be a six-month project and most of it would be stale
-before you reached it.
+**Authoring status:** all seven stages are written. Content that depends on fast-moving
+APIs — model names, prices, tool versions — was checked against the live docs when it was
+written. If something looks off later, the docs win; fix the topic.
 
 ## 8. Animation coverage policy
 
 - **Always animate**: anything with data flowing through it (pipelines, request paths, agent loops), anything with a tradeoff dial (chunk size, temperature, top-k), anything spatial (embeddings, vector search, context windows).
 - **Never animate**: syntax, CLI commands, config files, library APIs. A code block is better. An animated `uv add` would be decoration, and decoration is banned.
-- **Reuse**: one parameterised "pipeline" animation covers about fifteen topics with different node sets. That's how 49 animations cover 215 topics.
+- **Reuse**: one parameterised "pipeline" animation covers about fifteen topics with different node sets. That's how 57 animations cover 215 topics.

@@ -1,6 +1,8 @@
 # 06 — Animation Catalogue
 
-49 animations covering the 215 topics in `content/curriculum.yaml`. Tiers per
+The plan: 49 animations covering the 215 topics in `content/curriculum.yaml`. **Built:** 57,
+in `content/animations/` (one file per stage) — T3 and T4 ideas shipped as interactive T2
+versions with knobs, and a few were added where a topic needed one. Tiers per
 `05-PLATFORM-SPEC.md` §10: **T1** declarative SVG diagram-morph · **T2** interactive
 explorable · **T3** narrated film · **T4** driven by your own live data.
 
@@ -247,7 +249,7 @@ Your own capstone's real architecture, assembled and traced with live numbers. D
 Multi-hop question over a vector index (fails, because no single chunk holds the answer) vs a knowledge graph traversing two edges to reach it.
 **The point:** vectors find *similar*; graphs find *connected*. Multi-hop questions need the second.
 
-### `anim-lora-adapter` · T1 · s7
+### `anim-lora-adapter` · T1 · s5.8
 Frozen base weights, a small low-rank adapter merging in; parameter counts side by side (7B vs 4M trainable).
 **The point:** you're not retraining the model, you're bolting on a small steering layer — which is why LoRA is affordable and why it can't teach the model new facts.
 

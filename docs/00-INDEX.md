@@ -18,7 +18,7 @@ Planning documents. The platform gets built from these (by Claude — see
 | 03 | [`03-TIER-LIST.md`](03-TIER-LIST.md) | Which skills matter most, and your current status on each |
 | 04 | [`04-CURRICULUM-MAP.md`](04-CURRICULUM-MAP.md) | How each topic becomes content; the plain-language standard |
 | 05 | [`05-PLATFORM-SPEC.md`](05-PLATFORM-SPEC.md) | AmpratAI itself: screens, animations, colours, architecture, build order |
-| 06 | [`06-ANIMATION-CATALOG.md`](06-ANIMATION-CATALOG.md) | 49 animations: what each shows and why |
+| 06 | [`06-ANIMATION-CATALOG.md`](06-ANIMATION-CATALOG.md) | The animation plan: what each shows and why (57 built) |
 | 07 | [`07-PROJECT-BRIEFS.md`](07-PROJECT-BRIEFS.md) | 13 project briefs, written for someone building with AI assistance |
 | 08 | [`08-RESOURCES.md`](08-RESOURCES.md) | Where the content comes from; how videos and decks are chosen |
 | 09 | [`09-JOB-STRATEGY.md`](09-JOB-STRATEGY.md) | Roles, positioning, 63 interview questions, applications |
@@ -51,6 +51,7 @@ learning five frameworks.
 - [x] Platform specified
 - [x] Curriculum seeded (`content/curriculum.yaml`)
 - [x] **AmpratAI built and running** — `npm install && npm run dev`
-- [x] **Stage 1 written** — 38 topics, 7 animations, 13 project briefs
+- [x] **All seven stages written** — 215 topics, 511 practice items (each with a checked
+  answer), 57 animations, 13 project briefs
+- [x] Home page opens on a progress summary
 - [ ] Stage 1 started
-- [ ] Stage 2 content (written as you approach it)
