@@ -526,7 +526,7 @@ Build checks — validation, evaluation — that tolerate variation.`,
       },
       {
         label: 'Anthropic — models overview',
-        url: 'https://platform.claude.com/docs/en/about-claude/models/overview',
+        url: 'https://platform.claude.com/docs/en/models/overview',
       },
     ],
     glossary: [
@@ -1105,7 +1105,7 @@ retrying" state, not a spinner that never ends.`,
     docs: [
       {
         label: 'Anthropic — models overview',
-        url: 'https://platform.claude.com/docs/en/about-claude/models/overview',
+        url: 'https://platform.claude.com/docs/en/models/overview',
       },
       {
         label: 'Anthropic — rate limits',

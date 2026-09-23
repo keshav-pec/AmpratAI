@@ -3,5 +3,8 @@ import { s1Animations } from './s1';
 import { s2Animations } from './s2';
 import { s3Animations } from './s3';
 import { s4Animations } from './s4';
+import { s5Animations } from './s5';
 
-export const animations: Animation[] = [...s1Animations, ...s2Animations, ...s3Animations, ...s4Animations];
+export const animations: Animation[] = [
+  ...s1Animations, ...s2Animations, ...s3Animations, ...s4Animations, ...s5Animations,
+];
