@@ -78,12 +78,15 @@ export type Project = {
 export type AnimNode = {
   id: string;
   label: string;
-  shape: 'doc' | 'proc' | 'db' | 'model' | 'note' | 'user';
+  // 'dot' and 'qdot' are small points for spatial diagrams (a document, a query);
+  // for them `at` is the centre, and the label sits to the right
+  shape: 'doc' | 'proc' | 'db' | 'model' | 'note' | 'user' | 'dot' | 'qdot';
   at: [number, number];
   sub?: string;
 };
 
-export type AnimEdge = { from: string; to: string; payload?: string; curve?: number };
+// plain: a link with no arrowhead (graph neighbours, not a flow)
+export type AnimEdge = { from: string; to: string; payload?: string; curve?: number; plain?: boolean };
 
 export type AnimScene = {
   caption: string;

@@ -10,13 +10,25 @@ const SHAPE: Record<AnimNode['shape'], { fill: string; stroke: string; rx: numbe
   model: { fill: 'var(--surface)', stroke: 'var(--info)', rx: 18 },
   note: { fill: 'none', stroke: 'transparent', rx: 0 },
   user: { fill: 'var(--surface-2)', stroke: 'var(--info)', rx: 18 },
+  dot: { fill: 'var(--accent-soft)', stroke: 'var(--surface)', rx: 0 },
+  qdot: { fill: 'var(--info)', stroke: 'var(--surface)', rx: 0 },
 };
+
+const isDot = (n: AnimNode) => n.shape === 'dot' || n.shape === 'qdot';
+const DOT_R = 7;
 
 const NW = 104;
 const NH = 42;
 
 function center(n: AnimNode) {
-  return { x: n.at[0] + NW / 2, y: n.at[1] + NH / 2 };
+  return isDot(n) ? { x: n.at[0], y: n.at[1] } : { x: n.at[0] + NW / 2, y: n.at[1] + NH / 2 };
+}
+
+/** The area a node occupies, including a dot's label to its right. */
+function bounds(n: AnimNode) {
+  if (!isDot(n)) return [n.at[0], n.at[1], n.at[0] + NW, n.at[1] + NH];
+  const w = Math.max(n.label.length, (n.sub ?? '').length) * 6.2;
+  return [n.at[0] - DOT_R - 4, n.at[1] - DOT_R - 4, n.at[0] + DOT_R + 8 + w, n.at[1] + DOT_R + (n.sub ? 12 : 4)];
 }
 
 /** Straight line between two node edges, trimmed so it stops at the boxes. */
@@ -30,9 +42,9 @@ function edgePath(a: AnimNode, b: AnimNode) {
   const uy = dy / len;
   // distance from centre to the box edge along this direction
   const trim = (n: AnimNode) => {
+    if (isDot(n)) return DOT_R + 4;
     const tx = Math.abs(ux) < 1e-6 ? Infinity : NW / 2 / Math.abs(ux);
     const ty = Math.abs(uy) < 1e-6 ? Infinity : NH / 2 / Math.abs(uy);
-    void n;
     return Math.min(tx, ty) + 5;
   };
   const s = trim(a);
@@ -73,12 +85,11 @@ export default function AnimationView({
 
   // Fit the canvas to the diagram so there is no dead space around it.
   const box = useMemo(() => {
-    const xs = anim.nodes.map((n) => n.at[0]);
-    const ys = anim.nodes.map((n) => n.at[1]);
-    const minX = Math.min(...xs) - 10;
-    const minY = Math.min(...ys) - 22;      // room for annotations above a node
-    const maxX = Math.max(...xs) + NW + 10;
-    const maxY = Math.max(...ys) + NH + 10;
+    const b = anim.nodes.map(bounds);
+    const minX = Math.min(...b.map((r) => r[0])) - 10;
+    const minY = Math.min(...b.map((r) => r[1])) - 22;   // room for annotations above a node
+    const maxX = Math.max(...b.map((r) => r[2])) + 10;
+    const maxY = Math.max(...b.map((r) => r[3])) + 10;
     return `${minX} ${minY} ${maxX - minX} ${maxY - minY}`;
   }, [anim]);
 
@@ -115,7 +126,7 @@ export default function AnimationView({
             const live = flowing.has(key);
             return (
               <g key={key}>
-                <path d={d} fill="none" markerEnd="url(#arw)"
+                <path d={d} fill="none" markerEnd={e.plain ? undefined : 'url(#arw)'}
                       stroke={live ? 'var(--accent)' : 'var(--border)'}
                       strokeWidth={live ? 2.2 : 1.4} />
                 {live && (
@@ -147,6 +158,30 @@ export default function AnimationView({
               tone === 'warn' ? 'var(--warn)' : s.stroke;
             const label = labels[n.id] ?? n.label;
             const sub = labels[`${n.id}.sub`] ?? n.sub;
+            if (isDot(n)) {
+              const [x, y] = n.at;
+              return (
+                <g key={n.id} opacity={dimmed ? 0.32 : 1}>
+                  {tone && <circle cx={x} cy={y} r={DOT_R + 4} fill="none" stroke={stroke} strokeWidth={2.2} />}
+                  <circle cx={x} cy={y} r={DOT_R} fill={s.fill} stroke={s.stroke} strokeWidth={2} />
+                  <text x={x + DOT_R + 6} y={y + (sub ? 0 : 4)} fontSize="10.5" fill="var(--text)"
+                        fontWeight={n.shape === 'qdot' ? 650 : 500}>
+                    {label}
+                  </text>
+                  {sub && (
+                    <text x={x + DOT_R + 6} y={y + 12} fontSize="9" fill="var(--muted)" fontFamily="var(--mono)">
+                      {sub}
+                    </text>
+                  )}
+                  {notes[n.id] && (
+                    <text x={x} y={y - DOT_R - 7} textAnchor="middle" fontSize="10"
+                          fill="var(--accent)" fontFamily="var(--mono)">
+                      {notes[n.id]}
+                    </text>
+                  )}
+                </g>
+              );
+            }
             return (
               <g key={n.id} opacity={dimmed ? 0.32 : 1}>
                 {n.shape !== 'note' && (

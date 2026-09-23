@@ -13,6 +13,14 @@ import { s2_3 } from './s2_3';
 import { s2_4 } from './s2_4';
 import { s2_5 } from './s2_5';
 import { s2_6 } from './s2_6';
+import { s3_1 } from './s3_1';
+import { s3_2 } from './s3_2';
+import { s3_3 } from './s3_3';
+import { s3_4 } from './s3_4';
+import { s3_5 } from './s3_5';
+import { s3_6 } from './s3_6';
+import { s3_7 } from './s3_7';
+import { s3_8 } from './s3_8';
 
 export const topics: Topic[] = [
   ...s1_1,
@@ -29,4 +37,12 @@ export const topics: Topic[] = [
   ...s2_4,
   ...s2_5,
   ...s2_6,
+  ...s3_1,
+  ...s3_2,
+  ...s3_3,
+  ...s3_4,
+  ...s3_5,
+  ...s3_6,
+  ...s3_7,
+  ...s3_8,
 ];
