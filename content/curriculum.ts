@@ -164,7 +164,7 @@ export const stages: Stage[] = [
     modules: [
       { id: 's7.1', stage: 7, title: 'Interview execution and same-day debriefs', priority: 'core', topicCount: 3 },
       { id: 's7.2', stage: 7, title: 'Depth on demand', priority: 'core', topicCount: 3 },
-      { id: 's7.3', stage: 7, title: 'Optional deep dives: LoRA, vLLM, GraphRAG, voice', priority: 'optional', topicCount: 4 },
+      { id: 's7.3', stage: 7, title: 'Optional deep dives: voice, vLLM, GraphRAG, computer use', priority: 'optional', topicCount: 4 },
       { id: 's7.4', stage: 7, title: 'Negotiation and screening a role for real AI work', priority: 'core', topicCount: 2 },
     ],
     projects: ['p-7.1'],

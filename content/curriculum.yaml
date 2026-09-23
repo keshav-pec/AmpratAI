@@ -375,7 +375,7 @@ stages:
     modules:
       - { code: s7.1, title: "Interview execution and same-day debriefs", priority: core, topic_count: 3 }
       - { code: s7.2, title: "Depth on demand — fill the gap the interview exposed", priority: core, topic_count: 3 }
-      - { code: s7.3, title: "Optional deep dives: LoRA, vLLM, GraphRAG, voice, DSPy", priority: optional, topic_count: 4 }
+      - { code: s7.3, title: "Optional deep dives: voice, vLLM, GraphRAG, computer use", priority: optional, topic_count: 4 }
       - { code: s7.4, title: "Negotiation and screening a role for real AI work", priority: core, topic_count: 2 }
     projects: [p-7.1]
     readiness:
