@@ -84,7 +84,9 @@ export default function AnimationView({
 
   const focus = scene?.focus;
   const flowing = new Set(scene?.flow ?? []);
-  const marks = Object.fromEntries((scene?.mark ?? []).map((m) => [m.on, m.tone]));
+  const marks = Object.fromEntries(
+    [...(scene?.mark ?? []), ...(anim.dynamicMarks ? anim.dynamicMarks(knobs) : [])].map((m) => [m.on, m.tone]),
+  );
   const notes = Object.fromEntries((scene?.annotate ?? []).map((a) => [a.on, a.text]));
 
   function onKey(e: React.KeyboardEvent) {
@@ -144,20 +146,21 @@ export default function AnimationView({
               tone === 'bad' ? 'var(--bad)' :
               tone === 'warn' ? 'var(--warn)' : s.stroke;
             const label = labels[n.id] ?? n.label;
+            const sub = labels[`${n.id}.sub`] ?? n.sub;
             return (
               <g key={n.id} opacity={dimmed ? 0.32 : 1}>
                 {n.shape !== 'note' && (
                   <rect x={n.at[0]} y={n.at[1]} width={NW} height={NH} rx={s.rx}
                         fill={s.fill} stroke={stroke} strokeWidth={tone ? 2.2 : 1.4} />
                 )}
-                <text x={n.at[0] + NW / 2} y={n.at[1] + (n.sub ? NH / 2 - 3 : NH / 2 + 4)}
+                <text x={n.at[0] + NW / 2} y={n.at[1] + (sub ? NH / 2 - 3 : NH / 2 + 4)}
                       textAnchor="middle" fontSize="11.5" fill="var(--text)" fontWeight="550">
                   {label}
                 </text>
-                {n.sub && (
+                {sub && (
                   <text x={n.at[0] + NW / 2} y={n.at[1] + NH / 2 + 12} textAnchor="middle"
                         fontSize="9.5" fill="var(--muted)" fontFamily="var(--mono)">
-                    {n.sub}
+                    {sub}
                   </text>
                 )}
                 {notes[n.id] && (

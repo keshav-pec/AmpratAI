@@ -117,8 +117,10 @@ export type Animation = {
   knobs?: AnimKnob[];
   // derived readouts shown under the knobs, computed from knob values
   readout?: { label: string; expr: (k: Record<string, number>) => string }[];
-  // knob-driven node label overrides
+  // knob-driven label overrides: key "node" replaces the label, "node.sub" the sub-label
   dynamicLabels?: (k: Record<string, number>) => Record<string, string>;
+  // knob-driven highlights, added to the current scene's marks
+  dynamicMarks?: (k: Record<string, number>) => { on: string; tone: 'good' | 'bad' | 'warn' }[];
 };
 
 // ---- progress ---------------------------------------------------------

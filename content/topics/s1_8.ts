@@ -92,7 +92,7 @@ double in size.
 
 The rule that follows: **never build a prompt without knowing how big it is.**`,
     docs: [
-      { label: 'Anthropic — token counting', url: 'https://docs.anthropic.com/en/docs/build-with-claude/token-counting' },
+      { label: 'Anthropic — token counting', url: 'https://platform.claude.com/docs/en/build-with-claude/token-counting' },
       { label: 'Anthropic — pricing', url: 'https://www.anthropic.com/pricing' },
     ],
     glossary: [
@@ -287,7 +287,7 @@ value that validates, a second model scoring it against the source.
 That idea is the foundation of everything in Stage 3's evaluation module. Fluency is not
 evidence.`,
     docs: [
-      { label: 'Anthropic — reduce hallucinations', url: 'https://docs.anthropic.com/en/docs/test-and-evaluate/strengthen-guardrails/reduce-hallucinations' },
+      { label: 'Anthropic — reduce hallucinations', url: 'https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations' },
       { label: 'Jay Alammar — the Illustrated Transformer', url: 'https://jalammar.github.io/illustrated-transformer/' },
     ],
     glossary: [
@@ -464,7 +464,7 @@ name next to the vector.
 one that answers the question. If nothing relevant exists, retrieval still returns five
 confident results. Measuring that gap is what evaluation is for.`,
     docs: [
-      { label: 'Anthropic — embeddings', url: 'https://docs.anthropic.com/en/docs/build-with-claude/embeddings' },
+      { label: 'Anthropic — embeddings', url: 'https://platform.claude.com/docs/en/build-with-claude/embeddings' },
       { label: 'pgvector — README', url: 'https://github.com/pgvector/pgvector' },
     ],
     glossary: [
@@ -573,8 +573,10 @@ that distribution before one is picked.
     temperature 1      sample according to the probabilities as they are
     temperature 1.5+   flatten the distribution; unlikely tokens become possible
 
-Ranges differ by provider: Anthropic's API goes from 0 to 1, while OpenAI's and Gemini's go
-up to 2.
+Ranges differ by provider and by model. Where Anthropic's API accepts temperature, it runs
+from 0 to 1 — and its newest models don't accept sampling settings at all; you steer them
+with an *effort* setting instead. OpenAI's and Gemini's standard models go up to 2, and
+reasoning models everywhere restrict or ignore temperature.
 
 What to use:
 
@@ -646,7 +648,7 @@ remaining stages.
 **If you find yourself opening a linear algebra course, this module has failed.** You are
 building the car, not the engine. Go and build something.`,
     docs: [
-      { label: 'Anthropic — prompt engineering overview', url: 'https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview' },
+      { label: 'Anthropic — prompt engineering overview', url: 'https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview' },
       { label: 'Jay Alammar — the Illustrated Transformer', url: 'https://jalammar.github.io/illustrated-transformer/' },
     ],
     glossary: [
@@ -669,8 +671,8 @@ building the car, not the engine. Go and build something.`,
         mode: 'tool',
         title: 'Feel temperature',
         body: `Send the same prompt ten times at temperature 0, then ten times at 1.0, then five
-times at 1.5. Ask for JSON each time. (Anthropic's API stops at 1.0, so use an OpenAI or
-Gemini model for the 1.5 run.)
+times at 1.5. Ask for JSON each time. (Claude Haiku 4.5 accepts 0 to 1; the newest Claude
+models reject temperature entirely. Use an OpenAI or Gemini model for the 1.5 run.)
 
 Count how many parse successfully at each setting. That number is your argument for
 temperature 0 in extraction, and you will have measured it rather than been told it.`,
@@ -682,7 +684,7 @@ temperature 0 in extraction, and you will have measured it rather than been told
 
 Three details:
 
-- **Anthropic's API only goes up to 1.0**, so the 1.5 run needs a model whose API allows it — OpenAI's and Gemini's go to 2.
+- **On Anthropic's API, temperature tops out at 1.0** on the models that accept it — Haiku 4.5, for example — and the newest Claude models reject it entirely, steering with an effort setting instead. The 1.5 run needs a model whose API allows it; OpenAI's and Gemini's standard models go to 2.
 - **With enforced structured output** — a schema the API guarantees — parsing stays at 100% at any temperature. The randomness moves into the *values* instead.
 - **Some reasoning models ignore or restrict temperature** entirely. Check the model's documentation before drawing conclusions.`,
       },
@@ -713,7 +715,7 @@ If you stalled on one, that is the topic to revisit before moving on.`,
 3. Asking a model for a page number from a document you did not give it
 4. The same prompt, same model, same temperature 0, run twice`,
         answer: `1. **A 100-page document with the question at the very top** → weaker, vaguer answers. Models attend less reliably to instructions buried far from where they start writing. Put the question **after** the documents.
-2. **Temperature 1.4 with a strict JSON schema** → if the API **enforces** the schema, the JSON stays valid but the values get erratic. If it doesn't, expect parse failures. And on Anthropic's API, 1.4 is simply rejected — the limit is 1.0.
+2. **Temperature 1.4 with a strict JSON schema** → if the API **enforces** the schema, the JSON stays valid but the values get erratic. If it doesn't, expect parse failures. And on Anthropic's API it is rejected either way: the limit is 1.0 where temperature is accepted at all.
 3. **Asking for a page number from a document you didn't provide** → it will often invent a plausible page number. There is nothing to ground the answer in, and no escape hatch was offered.
 4. **The same prompt twice, at temperature 0** → usually identical, but **not guaranteed**. Tiny numeric differences in how requests are batched on the provider's hardware can change a token, and after that the text can drift. Never build anything that depends on exact repeatability.`,
       },
